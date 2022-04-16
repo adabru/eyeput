@@ -14,69 +14,22 @@ from PyQt5.QtGui import QFont, QCursor, QColor, QPainter
 
 import sys
 import signal
-from levels import Levels
-
 
 # alternative:  https://stackoverflow.com/questions/16615087/how-to-create-a-global-hotkey-on-windows-with-3-arguments
 import keyboard
 from pynput.mouse import Button, Controller
 
-mouse = Controller()
+from levels import Levels
+from commandlabel import CommandLabel as CommandLabel
+from settings import *
 
-selectionTime = 300
-delayBeforeClick = 0.6
-modifierColors = {
-    "win": QColor(0x61A0AF),
-    "alt": QColor(0x96C9DC),
-    "ctrl": QColor(0xF9B9B7),
-    "shift": QColor(0xF5D491),
-}
+mouse = Controller()
 
 
 class State:
-    lvl = "➀"
+    lvl = "lvl1"
     hold = False
     modifiers = set()
-
-
-class CommandLabel(QLabel):
-    modifiers = set()
-
-    def setModifiers(self, modifiers):
-        self.modifiers = modifiers
-        self.update()
-
-    def paintEvent(self, event):
-
-        fontSize = 20
-        painter = QPainter(self)
-        painter.setPen(QColor(255, 255, 255))
-        painter.setBrush(QColor(255, 255, 255, 50))
-        painter.setFont(QFont("Arial", fontSize))
-        painter.drawText(
-            0.5 * self.width(), 0.5 * (self.height() + fontSize) - 2, self.text()
-        )
-
-        super(CommandLabel, self).paintEvent(event)
-
-        if len(self.modifiers) > 0:
-
-            painter = QPainter(self)
-            painter.setPen(QColor(168, 34, 3, 50))
-
-            dotWidth = 10
-            gap = 2
-            leftBorder = 0.5 * self.width() - 2 * dotWidth - 2 * gap
-            oldBrush = painter.brush()
-            for i, key in enumerate(modifierColors):
-                if key in self.modifiers:
-                    painter.setBrush(modifierColors[key])
-                else:
-                    painter.setBrush(oldBrush)
-
-                painter.drawRoundedRect(
-                    int(i * (dotWidth + gap) + leftBorder), 10, dotWidth, dotWidth, 2, 2
-                )
 
 
 class App(QObject):
@@ -88,6 +41,9 @@ class App(QObject):
     labels = {}
     toggle_signal = pyqtSignal()
     state = State()
+
+    hoverItem = None
+    hoverItemId = None
 
     hoverTimer = None
     clickTimer = None
@@ -142,20 +98,31 @@ class App(QObject):
         self.updateGrid()
 
     def updateGrid(self):
-        for y, row in enumerate(Levels[self.state.lvl]):
-            for x, labelKey in enumerate(row):
-                self.labels[(x, y)].setText(labelKey)
-                self.labels[(x, y)].setModifiers(self.state.modifiers)
+        for label in self.labels.values():
+            label.id = None
+
+        for key, item in Levels[self.state.lvl].items():
+            self.labels[(item.x, item.y)].id = key
+            self.labels[(item.x, item.y)].item = item
+            self.labels[(item.x, item.y)].setText(item.label)
+            self.labels[(item.x, item.y)].setModifiers(self.state.modifiers)
+            self.labels[(item.x, item.y)].setVisible(True)
+
+        for label in self.labels.values():
+            if label.id == None:
+                label.setVisible(False)
 
     def eventFilter(self, obj, event):
         if event.type() == QEvent.Enter and self.togglePos != QCursor.pos():
             self.hoverTimer.start(selectionTime)
-            self.hoverItem = obj.text()
+            self.hoverItemId = obj.id
+            self.hoverItem = obj.item
             return True
 
         elif event.type() == QEvent.Leave:
             self.hoverTimer.stop()
-            self.hoverItem = ""
+            self.hoverItemId = None
+            self.hoverItem = None
             return True
 
         else:
@@ -163,42 +130,39 @@ class App(QObject):
 
     @pyqtSlot()
     def selectItem(self):
-        print("selectItem: " + self.hoverItem)
+        print("selectItem: " + self.hoverItemId)
         self.hoverTimer.stop()
 
         hold = self.state.hold
 
-        if self.hoverItem == "hold":
+        if self.hoverItemId == "hold":
             self.state.hold = not self.state.hold
             hold = self.state.hold
 
-        elif self.hoverItem in modifierColors:
-            if self.hoverItem in self.state.modifiers:
-                self.state.modifiers.remove(self.hoverItem)
+        elif self.hoverItemId in Levels:
+            self.setLevel(self.hoverItemId)
+            hold = True
+
+        elif self.hoverItemId in modifierColors:
+            if self.hoverItemId in self.state.modifiers:
+                self.state.modifiers.remove(self.hoverItemId)
             else:
-                self.state.modifiers.add(self.hoverItem)
+                self.state.modifiers.add(self.hoverItemId)
             hold = True
 
             self.updateGrid()
 
-        elif re.match(r"[A-Z]", self.hoverItem) != None:
-            self.state.modifiers.add("shift")
-            self.pressKey(self.hoverItem.lower())
-
-        elif self.hoverItem in Levels:
-            self.setLevel(self.hoverItem)
-            hold = True
-
-        elif self.hoverItem == "click":
+        elif self.hoverItemId == "click":
             self.clickTimer.setInterval(50)
             self.clickTimer.start()
             self.mouseMoveTime = time()
+            self.state.hold = False
             hold = False
 
-        elif self.hoverItem == "":
-            print("invalid symbol: ''")
+        elif self.hoverItem.pressKey:
+            self.pressKey(self.hoverItem.pressKey)
         else:
-            self.pressKey(self.hoverItem)
+            self.pressKey(self.hoverItem.label)
 
         if not hold:
             self.toggle()
@@ -225,6 +189,8 @@ class App(QObject):
         self.lastPos = currentPos = mouse.position
 
     def pressKey(self, keyCode):
+        print(self.state.modifiers)
+        print("+".join(list(self.state.modifiers) + [keyCode]))
         keyboard.press_and_release("+".join(list(self.state.modifiers) + [keyCode]))
         self.state.modifiers.clear()
         self.updateGrid()
