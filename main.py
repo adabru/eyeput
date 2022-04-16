@@ -24,7 +24,7 @@ from pynput.mouse import Button, Controller
 mouse = Controller()
 
 selectionTime = 300
-delayBeforeClick = 1.5
+delayBeforeClick = 0.6
 modifierColors = {
     "win": QColor(0x61A0AF),
     "alt": QColor(0x96C9DC),
@@ -47,7 +47,18 @@ class CommandLabel(QLabel):
         self.update()
 
     def paintEvent(self, event):
+
+        fontSize = 20
+        painter = QPainter(self)
+        painter.setPen(QColor(255, 255, 255))
+        painter.setBrush(QColor(255, 255, 255, 50))
+        painter.setFont(QFont("Arial", fontSize))
+        painter.drawText(
+            0.5 * self.width(), 0.5 * (self.height() + fontSize) - 2, self.text()
+        )
+
         super(CommandLabel, self).paintEvent(event)
+
         if len(self.modifiers) > 0:
 
             painter = QPainter(self)
@@ -162,8 +173,12 @@ class App(QObject):
             hold = self.state.hold
 
         elif self.hoverItem in modifierColors:
-            self.state.modifiers.add(self.hoverItem)
+            if self.hoverItem in self.state.modifiers:
+                self.state.modifiers.remove(self.hoverItem)
+            else:
+                self.state.modifiers.add(self.hoverItem)
             hold = True
+
             self.updateGrid()
 
         elif re.match(r"[A-Z]", self.hoverItem) != None:
@@ -178,6 +193,7 @@ class App(QObject):
             self.clickTimer.setInterval(50)
             self.clickTimer.start()
             self.mouseMoveTime = time()
+            hold = False
 
         elif self.hoverItem == "":
             print("invalid symbol: ''")
@@ -191,6 +207,7 @@ class App(QObject):
     def toggle(self):
         self.togglePos = QCursor.pos()
         self.widget.setVisible(not self.widget.isVisible())
+        self.state.modifiers.clear()
 
     @pyqtSlot()
     def processMouse(self):
@@ -204,6 +221,7 @@ class App(QObject):
         elif time() - self.mouseMoveTime > delayBeforeClick:
             mouse.click(Button.left, 1)
             self.clickTimer.stop()
+
         self.lastPos = currentPos = mouse.position
 
     def pressKey(self, keyCode):
@@ -217,6 +235,7 @@ app = App()
 # design flaw, see https://stackoverflow.com/q/4938723/6040478
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-keyboard.add_hotkey("^", app.toggle_signal.emit, suppress=True)
+keyboard.add_hotkey("alt+a", app.toggle_signal.emit, suppress=True)
+# print(keyboard.read_event())
 
 qapp.exec_()
