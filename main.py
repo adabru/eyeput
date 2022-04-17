@@ -1,4 +1,4 @@
-import re
+import re, sys, os, signal, errno
 from time import time
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QHBoxLayout
 from PyQt5.QtCore import (
@@ -9,21 +9,22 @@ from PyQt5.QtCore import (
     QEvent,
     QTimer,
     QPoint,
+    QThread,
 )
 from PyQt5.QtGui import QFont, QCursor, QColor, QPainter
 
-import sys
-import signal
-
 # alternative:  https://stackoverflow.com/questions/16615087/how-to-create-a-global-hotkey-on-windows-with-3-arguments
-import keyboard
 from pynput.mouse import Button, Controller
 
 from levels import Levels
 from commandlabel import CommandLabel as CommandLabel
 from settings import *
+from unix_socket import UnixSocket
+
 
 mouse = Controller()
+sock = UnixSocket("/tmp/evdev_keypress.sock", 100)
+sock_eyeput = UnixSocket("/tmp/eyeput.sock", 1)
 
 
 class State:
@@ -191,9 +192,34 @@ class App(QObject):
     def pressKey(self, keyCode):
         print(self.state.modifiers)
         print("+".join(list(self.state.modifiers) + [keyCode]))
-        keyboard.press_and_release("+".join(list(self.state.modifiers) + [keyCode]))
+        # keyboard.press_and_release("+".join(list(self.state.modifiers) + [keyCode]))
+        sock.try_send("+".join(list(self.state.modifiers) + [keyCode]))
         self.state.modifiers.clear()
         self.updateGrid()
+
+
+class SockListenThread(QThread):
+    toggle_signal = pyqtSignal()
+
+    def __init__(self):
+        super().__init__()
+
+    def run(self):
+        FIFO = "/tmp/eyeput.sock"
+
+        try:
+            os.unlink(FIFO)
+        except OSError:
+            if os.path.exists(FIFO):
+                raise
+
+        os.mkfifo(FIFO)
+
+        while True:
+            with open(FIFO) as fifo:
+                data = fifo.read()
+                if len(data) > 0:
+                    self.toggle_signal.emit()
 
 
 qapp = QApplication(sys.argv)
@@ -201,7 +227,11 @@ app = App()
 # design flaw, see https://stackoverflow.com/q/4938723/6040478
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-keyboard.add_hotkey("alt+a", app.toggle_signal.emit, suppress=True)
+
 # print(keyboard.read_event())
 
+sock_listen_thread = SockListenThread()
+sock_listen_thread.toggle_signal.connect(app.toggle, Qt.QueuedConnection)
+
+sock_listen_thread.start()
 qapp.exec_()
