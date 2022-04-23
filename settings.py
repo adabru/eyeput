@@ -8,3 +8,21 @@ modifierColors = {
     "ctrl": QColor(0xF9B9B7),
     "shift": QColor(0xF5D491),
 }
+
+
+class Sockets:
+    gaze = "/tmp/gaze_input.sock"
+    keypress = "/tmp/evdev_keypress.sock"
+    eyeput = "/tmp/eyeput.fifo"
+
+
+class Tiles:
+    x = 14
+    y = 6
+
+
+class Colors:
+    text = "#00ffffff"
+    item = "#44f0f0ff"
+    circle = "40ffffff"
+    circle_hovered = ""

@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import re, sys, os, signal, errno
 from time import time
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QHBoxLayout
@@ -11,9 +13,7 @@ from PyQt5.QtCore import (
     QPoint,
     QThread,
 )
-from PyQt5.QtGui import QFont, QCursor, QColor, QPainter
-
-# alternative:  https://stackoverflow.com/questions/16615087/how-to-create-a-global-hotkey-on-windows-with-3-arguments
+from PyQt5.QtGui import QFont, QColor, QPainter
 from pynput.mouse import Button, Controller
 
 from levels import Levels
@@ -21,10 +21,10 @@ from commandlabel import CommandLabel as CommandLabel
 from settings import *
 from unix_socket import UnixSocket
 
-
 mouse = Controller()
-sock = UnixSocket("/tmp/evdev_keypress.sock", 100)
-sock_eyeput = UnixSocket("/tmp/eyeput.sock", 1)
+
+sock_keypress = UnixSocket(Sockets.keypress, 100)
+sock_gaze = UnixSocket(Sockets.gaze, 100)
 
 
 class State:
@@ -34,17 +34,12 @@ class State:
 
 
 class App(QObject):
-    togglePos = QPoint(0, 0)
-    colors = {
-        "item": "#4480f8ff",
-        "hover": "#6600bce8",
-    }
+    # prevent clicking first element when using mouse and pressing the hotkey
+    gazeMoved = False
     labels = {}
-    toggle_signal = pyqtSignal()
     state = State()
 
     hoverItem = None
-    hoverItemId = None
 
     hoverTimer = None
     clickTimer = None
@@ -53,7 +48,6 @@ class App(QObject):
 
     def __init__(self):
         super().__init__()
-        self.toggle_signal.connect(self.toggle, Qt.QueuedConnection)
 
         self.hoverTimer = QTimer(self)
         self.hoverTimer.timeout.connect(self.selectItem)
@@ -62,25 +56,25 @@ class App(QObject):
         self.clickTimer.timeout.connect(self.processMouse)
 
         self.widget = QWidget()
-        self.widget.setStyleSheet(
-            f"""
-          QLabel {{ font-size: 20pt; background-color: {self.colors["item"]} ; }}
-          QLabel:hover {{  background-color: {self.colors["hover"]} ; }}
-        """
-        )
         self.widget.setAttribute(Qt.WA_TranslucentBackground, True)
-        # self.widget.setAttribute(Qt.WA_TransparentForMouseEvents, True)
-        self.widget.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
-        self.widget.setWindowState(Qt.WindowFullScreen)
-        screenGeometry = QApplication.primaryScreen().availableGeometry()
+        self.widget.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        self.widget.setWindowFlags(
+            Qt.FramelessWindowHint
+            | Qt.WindowStaysOnTopHint
+            | Qt.X11BypassWindowManagerHint
+        )
+        # self.widget.setWindowState(Qt.WindowFullScreen)
+
+        screenGeometry = QApplication.primaryScreen().geometry()
+
         self.widget.setGeometry(screenGeometry)
         self.widget.setFocusPolicy(Qt.NoFocus)
 
-        screenGeometry = QApplication.primaryScreen().availableGeometry()
-        dx = int(screenGeometry.width() / 14)
-        dy = int(screenGeometry.height() / 6)
-        for y in range(6):
-            for x in range(14):
+        dx = int(screenGeometry.width() / Tiles.x)
+        dy = int(screenGeometry.height() / Tiles.y)
+
+        for y in range(Tiles.y):
+            for x in range(Tiles.x):
                 label = CommandLabel(self.widget)
                 label.setAlignment(Qt.AlignCenter)
                 label.setGeometry(x * dx, y * dy, dx, dy)
@@ -91,8 +85,8 @@ class App(QObject):
 
         self.updateGrid()
 
-        self.widget.setWindowTitle("speechwindow")
-        self.widget.show()
+        self.widget.setWindowTitle("eyeput")
+        # self.widget.show()
 
     def setLevel(self, levelId):
         self.state.lvl = levelId
@@ -113,66 +107,80 @@ class App(QObject):
             if label.id == None:
                 label.setVisible(False)
 
-    def eventFilter(self, obj, event):
-        if event.type() == QEvent.Enter and self.togglePos != QCursor.pos():
-            self.hoverTimer.start(selectionTime)
-            self.hoverItemId = obj.id
-            self.hoverItem = obj.item
-            return True
-
-        elif event.type() == QEvent.Leave:
+    @pyqtSlot(int, int)
+    def onGaze(self, x, y):
+        if not self.widget.isVisible():
             self.hoverTimer.stop()
-            self.hoverItemId = None
-            self.hoverItem = None
-            return True
+            return
 
+        screenGeometry = QApplication.primaryScreen().geometry()
+        if screenGeometry.contains(x, y):
+            xWidget = int(Tiles.x * x / screenGeometry.width())
+            yWidget = int(Tiles.y * y / screenGeometry.height())
+            widget = self.labels[(xWidget, yWidget)]
         else:
-            return super(App, self).eventFilter(obj, event)
+            widget = None
+
+        if widget != self.hoverItem and self.gazeMoved:
+            if self.hoverItem:
+                self.hoverItem.setHovered(False)
+
+            if widget != None and widget.isVisible():
+                self.hoverTimer.start(selectionTime)
+                widget.setHovered(True)
+            else:
+                self.hoverTimer.stop()
+
+        self.gazeMoved = True
+        self.hoverItem = widget
 
     @pyqtSlot()
     def selectItem(self):
-        print("selectItem: " + self.hoverItemId)
+        print("selectItem: " + self.hoverItem.id)
         self.hoverTimer.stop()
+        self.hoverItem.setHovered(False)
 
         hold = self.state.hold
 
-        if self.hoverItemId == "hold":
+        if self.hoverItem.id == "hold":
             self.state.hold = not self.state.hold
             hold = self.state.hold
 
-        elif self.hoverItemId in Levels:
-            self.setLevel(self.hoverItemId)
+        elif self.hoverItem.id in Levels:
+            self.setLevel(self.hoverItem.id)
             hold = True
 
-        elif self.hoverItemId in modifierColors:
-            if self.hoverItemId in self.state.modifiers:
-                self.state.modifiers.remove(self.hoverItemId)
+        elif self.hoverItem.id in modifierColors:
+            if self.hoverItem.id in self.state.modifiers:
+                self.state.modifiers.remove(self.hoverItem.id)
             else:
-                self.state.modifiers.add(self.hoverItemId)
+                self.state.modifiers.add(self.hoverItem.id)
             hold = True
 
             self.updateGrid()
 
-        elif self.hoverItemId == "click":
+        elif self.hoverItem.id == "click":
             self.clickTimer.setInterval(50)
             self.clickTimer.start()
             self.mouseMoveTime = time()
             self.state.hold = False
             hold = False
 
-        elif self.hoverItem.pressKey:
-            self.pressKey(self.hoverItem.pressKey)
+        elif self.hoverItem.item.pressKey:
+            self.pressKey(self.hoverItem.item.pressKey)
         else:
-            self.pressKey(self.hoverItem.label)
+            self.pressKey(self.hoverItem.item.label)
 
         if not hold:
             self.toggle()
 
     @pyqtSlot()
     def toggle(self):
-        self.togglePos = QCursor.pos()
+        self.gazeMoved = False
         self.widget.setVisible(not self.widget.isVisible())
+
         self.state.modifiers.clear()
+        self.hoverTimer.stop()
 
     @pyqtSlot()
     def processMouse(self):
@@ -190,22 +198,19 @@ class App(QObject):
         self.lastPos = currentPos = mouse.position
 
     def pressKey(self, keyCode):
-        print(self.state.modifiers)
-        print("+".join(list(self.state.modifiers) + [keyCode]))
-        # keyboard.press_and_release("+".join(list(self.state.modifiers) + [keyCode]))
-        sock.try_send("+".join(list(self.state.modifiers) + [keyCode]))
+        sock_keypress.try_send("+".join(list(self.state.modifiers) + [keyCode]))
         self.state.modifiers.clear()
         self.updateGrid()
 
 
-class SockListenThread(QThread):
+class HotḱeyThread(QThread):
     toggle_signal = pyqtSignal()
 
     def __init__(self):
         super().__init__()
 
     def run(self):
-        FIFO = "/tmp/eyeput.sock"
+        FIFO = Sockets.eyeput
 
         try:
             os.unlink(FIFO)
@@ -222,6 +227,37 @@ class SockListenThread(QThread):
                     self.toggle_signal.emit()
 
 
+class GazeThread(QThread):
+    gaze_signal = pyqtSignal(int, int)
+
+    def __init__(self):
+        super().__init__()
+
+    def run(self):
+        sock_gaze.listen()
+        while True:
+            print("Wait for a connection")
+            sock_gaze.accept()
+            print("Connected. Listening for keys ...")
+            try:
+                # Receive the data in small chunks and retransmit it
+                while True:
+                    gaze_frame = sock_gaze.receive()
+                    [t, x, y] = gaze_frame.split(" ")
+                    screenGeometry = QApplication.primaryScreen().geometry()
+                    x = float(x) * screenGeometry.width()
+                    y = float(y) * screenGeometry.height()
+
+                    self.gaze_signal.emit(int(x), int(y))
+
+            except RuntimeError as err:
+                print(err)
+
+            finally:
+                print("Clean up the connection")
+                sock_gaze.close_connection()
+
+
 qapp = QApplication(sys.argv)
 app = App()
 # design flaw, see https://stackoverflow.com/q/4938723/6040478
@@ -230,8 +266,13 @@ signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 # print(keyboard.read_event())
 
-sock_listen_thread = SockListenThread()
-sock_listen_thread.toggle_signal.connect(app.toggle, Qt.QueuedConnection)
+hotkey_thread = HotḱeyThread()
+hotkey_thread.toggle_signal.connect(app.toggle, Qt.QueuedConnection)
 
-sock_listen_thread.start()
+gaze_thread = GazeThread()
+gaze_thread.gaze_signal.connect(app.onGaze, Qt.QueuedConnection)
+
+
+hotkey_thread.start()
+gaze_thread.start()
 qapp.exec_()

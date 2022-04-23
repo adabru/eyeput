@@ -17,10 +17,12 @@ class UnixSocket:
                 self.sock.connect(self.path)
                 self.reconnect = False
             self.send(msg)
-        except BrokenPipeError as e:
+
+        except (BrokenPipeError, ConnectionRefusedError) as e:
             print(e)
             self.sock.close()
             self.reconnect = True
+
         except OSError as e:
             if e.errno == 107:  # Transport endpoint is not connected
                 try:

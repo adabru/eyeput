@@ -3,13 +3,15 @@
 
 TODO
 - eye tracker
-    - introduce IPC in main.py to communicate with mouse.py (reads mouse position and converts into exetracker replacement)
-    - start main.py as subprocess from mouse_simulation.py
+    - BUG: does not draw correctly on start up
+    - mouse move for click
+    - activation via mouse short left
 - start hidden
 - KNOWN ISSUES:
     - eyeput window appears in desktops window overview when overview open and pressing tilde 
     - firefox pop up menu disappers, when pressing tilde
     - hotkey does sometimes not work at the first call, press shift before
+    - https://doc.qt.io/qt-5/qwidget.html#showFullScreen
 
 - scroll
 - unicode symbols

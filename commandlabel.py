@@ -8,9 +8,18 @@ class CommandLabel(QLabel):
     modifiers = set()
     id = ""
     item = None
+    hovered = False
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setStyleSheet(f"background-color: {Colors.item};")
 
     def setModifiers(self, modifiers):
         self.modifiers = modifiers
+        self.update()
+
+    def setHovered(self, value):
+        self.hovered = value
         self.update()
 
     def paintEvent(self, event):
@@ -20,7 +29,10 @@ class CommandLabel(QLabel):
         painter.setFont(QFont("Arial", fontSize))
 
         painter.setPen(QColor(255, 255, 255, 0))
-        painter.setBrush(QColor(255, 255, 255, 40))
+        if self.hovered:
+            painter.setBrush(QColor(80, 255, 255, 150))
+        else:
+            painter.setBrush(QColor(255, 255, 255, 40))
         painter.drawEllipse(self.rect().center() + QPoint(1, 1), 14, 14)
 
         painter.setPen(QColor(0, 0, 0))

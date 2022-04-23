@@ -6,5 +6,5 @@ then
     usage: \033[1meyeput toggle\033[0m
   "
 else
-  printf 1 > /tmp/eyeput.sock
+  printf 1 > /tmp/eyeput.fifo
 fi

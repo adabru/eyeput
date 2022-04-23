@@ -6,8 +6,9 @@ import keyboard
 
 # local
 from unix_socket import UnixSocket
+from settings import Sockets
 
-sock_keyboard = UnixSocket("/tmp/evdev_keypress.sock", 100)
+sock_keyboard = UnixSocket(Sockets.keypress, 100)
 sock_keyboard.listen()
 
 while True:
