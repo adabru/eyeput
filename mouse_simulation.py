@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
-import re
-import subprocess
-import time
+import re, time, subprocess
 
 from pynput.mouse import Button, Controller
 from unix_socket import UnixSocket

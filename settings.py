@@ -1,7 +1,9 @@
 from PyQt5.QtGui import QColor
 
-selectionTime = 300
-delayBeforeClick = 0.6
+
+activate_keypress = True  # DEFAULT: True - can be deactivated when debugging
+
+
 modifierColors = {
     "win": QColor(0x61A0AF),
     "alt": QColor(0x96C9DC),
@@ -19,10 +21,20 @@ class Sockets:
 class Tiles:
     x = 14
     y = 6
+    maxSide = 64
 
 
 class Colors:
-    text = "#00ffffff"
+    text = QColor(0, 0, 0)
     item = "#44f0f0ff"
-    circle = "40ffffff"
-    circle_hovered = ""
+    circleBorder = QColor(255, 255, 255, 0)
+    circle = QColor(255, 255, 255, 40)
+    circle_hovered = QColor(80, 255, 255, 150)
+    modifierBorder = QColor(168, 34, 3, 50)
+
+
+class Times:
+    deactivateAfter = 1000
+    selectAfter = 1000
+    delayBeforeClick = 0.6
+    clickAfter = 50

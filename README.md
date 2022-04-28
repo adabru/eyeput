@@ -2,11 +2,17 @@
 
 
 TODO
+- line 251:
+    File "/home/slava/repos/eyeput/./main.py", line 183, in selectItem
+    self.pressKey(self.hoverItem.item.pressKey)
+  File "/home/slava/repos/eyeput/./main.py", line 251, in pressKey
+    sock_keypress.try_send("+".join(list(self.gridState.modifiers) + [keyCode]))
+    TypeError: sequence item 0: expected str instance, NoneType found
+- missing images in corner have to be removed
 - eye tracker
     - BUG: does not draw correctly on start up
     - mouse move for click
-    - activation via mouse short left
-- start hidden
+
 - KNOWN ISSUES:
     - eyeput window appears in desktops window overview when overview open and pressing tilde 
     - firefox pop up menu disappers, when pressing tilde
@@ -15,9 +21,7 @@ TODO
 
 - scroll
 - unicode symbols
-- images
 - special clicks: double, etc.
-- commandos
 
 setup
 ```sh

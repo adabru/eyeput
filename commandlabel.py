@@ -1,6 +1,9 @@
+import os.path
+
 from PyQt5.QtWidgets import QLabel
-from PyQt5.QtGui import QFont, QColor, QPainter
+from PyQt5.QtGui import QFont, QColor, QPainter, QPixmap
 from PyQt5.QtCore import Qt, QPoint, QRect
+
 from settings import *
 
 
@@ -24,18 +27,40 @@ class CommandLabel(QLabel):
 
     def paintEvent(self, event):
 
-        fontSize = 20
         painter = QPainter(self)
-        painter.setFont(QFont("Arial", fontSize))
 
-        painter.setPen(QColor(255, 255, 255, 0))
+        # draw image
+        if self.item and hasattr(self.item, "img"):
+            pixmap = QPixmap(self.item.img)
+            if pixmap.height() == 0:
+                pixmap = QPixmap(
+                    f"{os.path.dirname(__file__)}/resources/images/missing.png"
+                )
+                print(f"{os.path.dirname(__file__)}/resources/images/missing.png")
+
+            pixmapRatio = float(pixmap.width()) / pixmap.height()
+            windowRatio = float(self.width()) / self.height()
+
+            newWidth = min(self.width(), Tiles.maxSide)
+            newHeight = int(newWidth / pixmapRatio)
+            dx = (newHeight - self.width()) / -2
+            dy = (newHeight - self.height()) / -2
+
+            painter.drawPixmap(dx, dy, newWidth, newHeight, pixmap)
+
+        # draw hover cirlce
+        painter.setPen(Colors.circleBorder)
         if self.hovered:
-            painter.setBrush(QColor(80, 255, 255, 150))
+            painter.setBrush(Colors.circle_hovered)
         else:
-            painter.setBrush(QColor(255, 255, 255, 40))
+            painter.setBrush(Colors.circle)
+
         painter.drawEllipse(self.rect().center() + QPoint(1, 1), 14, 14)
 
-        painter.setPen(QColor(0, 0, 0))
+        # draw text
+        fontSize = 20
+        painter.setFont(QFont("Arial", fontSize))
+        painter.setPen(Colors.text)
         painter.drawText(
             self.rect(),
             Qt.AlignCenter,
@@ -43,19 +68,18 @@ class CommandLabel(QLabel):
         )
 
         if len(self.modifiers) > 0:
-            painter.setPen(QColor(168, 34, 3, 50))
+            painter.setPen(Colors.modifierBorder)
 
             dotWidth = 10
             gap = 2
             leftBorder = 0.5 * self.width() - 2 * dotWidth - 2 * gap
-            oldBrush = painter.brush()
 
             for i, key in enumerate(modifierColors):
 
                 if key in self.modifiers:
                     painter.setBrush(modifierColors[key])
                 else:
-                    painter.setBrush(oldBrush)
+                    painter.setBrush(QColor(0, 0, 0, 0))
 
                 painter.drawRoundedRect(
                     int(i * (dotWidth + gap) + leftBorder), 10, dotWidth, dotWidth, 2, 2

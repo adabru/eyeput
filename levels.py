@@ -1,3 +1,16 @@
+import os.path
+
+from PyQt5.QtCore import QRectF
+
+
+class InternalAction:
+    def __init__(self, label, x, y, img=None):
+        self.label = label
+        self.x = x
+        self.y = y
+        self.img = img
+
+
 class KeyAction:
     def __init__(self, label, x, y, pressKey=None):
         self.label = label
@@ -6,8 +19,17 @@ class KeyAction:
         self.pressKey = pressKey
 
 
+class CmdAction:
+    def __init__(self, label, x, y, cmd, img=None):
+        self.label = label
+        self.x = x
+        self.y = y
+        self.cmd = cmd
+        self.img = img
+
+
 Levels = {
-    "lvl1": {
+    "keyboard1": {
         # row 0
         "a": KeyAction("a", 0, 0),
         "b": KeyAction("b", 1, 0),
@@ -67,7 +89,7 @@ Levels = {
         "X": KeyAction("X", 10, 3, "shift+x"),
         "Y": KeyAction("Y", 11, 3, "shift+y"),
         "Z": KeyAction("Z", 12, 3, "shift+z"),
-        "click": KeyAction("click", 13, 3),
+        "click": InternalAction("click", 13, 3),
         # row 4
         "left": KeyAction("←", 0, 4, "left"),
         "right": KeyAction("→", 1, 4, "right"),
@@ -95,11 +117,11 @@ Levels = {
         "tab": KeyAction("↹", 8, 5, "tab"),
         "enter": KeyAction("⏎", 9, 5, "enter"),
         "slash": KeyAction("/", 10, 5, "shift+/"),
-        "hold": KeyAction("hold", 11, 5),
-        "lvl2": KeyAction("➁", 12, 5),
-        "lvl3": KeyAction("➂", 13, 5),
+        "hold": InternalAction("hold", 11, 5),
+        "keyboard2": InternalAction("➁", 12, 5),
+        "textCmds": InternalAction("➂", 13, 5),
     },
-    "lvl2": {
+    "keyboard2": {
         # row 0
         "home": KeyAction("home", 0, 0),
         "end": KeyAction("end", 1, 0),
@@ -154,11 +176,11 @@ Levels = {
         "F11": KeyAction("F11", 10, 4),
         "F12": KeyAction("F12", 11, 4),
         # row 5
-        "hold": KeyAction("hold", 11, 5),
-        "lvl1": KeyAction("➀", 12, 5),
-        "lvl3": KeyAction("➂", 13, 5),
+        "hold": InternalAction("hold", 11, 5),
+        "keyboard1": InternalAction("➀", 12, 5),
+        "textCmds": InternalAction("➂", 13, 5),
     },
-    "lvl3": {
+    "textCmds": {
         # row 0
         "copy": KeyAction("copy", 0, 0, "ctrl+c"),
         "cut": KeyAction("cut", 1, 0, "ctrl+x"),
@@ -168,8 +190,82 @@ Levels = {
         # row 3
         # row 4
         # row 5
-        "hold": KeyAction("hold", 11, 5),
-        "lvl1": KeyAction("➀", 12, 5),
-        "lvl2": KeyAction("➁", 13, 5),
+        "hold": InternalAction("hold", 11, 5),
+        "keyboard1": InternalAction("➀", 12, 5),
+        "keyboard2": InternalAction("➁", 13, 5),
+    },
+    "apps": {
+        # row 0
+        "vsc-eyeput": CmdAction(
+            "/eyeput",
+            1,
+            0,
+            f"code {os.path.dirname(__file__)}",
+            img=f"{os.path.dirname(__file__)}/resources/images/vsc.png",
+        ),
+        # row 1
+        "terminal": CmdAction(
+            "",
+            0,
+            1,
+            "gnome-terminal",
+            img="/usr/share/app-info/icons/archlinux-arch-community/128x128/liri-terminal_utilities-terminal.png",
+        ),
+        # row 2
+        "google": CmdAction(
+            "google",
+            0,
+            2,
+            "xdg-open http://google.com &",
+            img="/usr/share/app-info/icons/archlinux-arch-extra/64x64/kaccounts-providers_applications-internet.png",
+        ),
+        "golem": CmdAction(
+            "golem",
+            1,
+            2,
+            "xdg-open https://meet.golem.de/ &",
+            img=f"{os.path.dirname(__file__)}/resources/images/jitsi.png",
+        ),
+        "github": CmdAction(
+            "github",
+            2,
+            2,
+            "xdg-open https://github.com/adabru &",
+            img=f"{os.path.dirname(__file__)}/resources/images/web-github-icon.png",
+        ),
+        "github": CmdAction(
+            "github",
+            2,
+            3,
+            "xdg-open https://github.com/adabru &",
+            img="invalid path",
+        ),
     },
 }
+
+
+class Layout:
+    def findLevel(x, y):
+        for lvl in Layout.areas:
+            if Layout.areas[lvl].contains(x, y):
+                return lvl
+        return None
+
+    areas = {
+        # diag top left
+        "textCmds": QRectF(-1, -1, 1, 1),
+        # top left
+        "keyboard1": QRectF(0, -1, 0.5, 1),
+        # top right
+        "keyboard2": QRectF(0.5, -1, 0.5, 1),
+        # left
+        "apps": QRectF(-1, 0, 1, 1),
+    }
+    # areas = {
+    #     # top
+    #     "keyboard1": QRectF(0, -1, 1, 1),
+    #     # bottom
+    #     "keyboard2": QRectF(0, 1, 1, 1),
+    #     # left
+    #     "textCmds": QRectF(-1, 0, 1, 1),
+    # }
