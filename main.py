@@ -4,17 +4,18 @@ import sys, signal, subprocess
 from time import time
 
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QHBoxLayout
-from PyQt5.QtCore import QObject, pyqtSlot, Qt, QTimer, QRectF
+from PyQt5.QtCore import QObject, pyqtSlot, Qt, QTimer, QRectF, QPoint, QPointF
 from PyQt5.QtGui import QFont, QColor, QPainter, QPixmap
 from pynput.mouse import Button, Controller
 
 from levels import *
-from commandlabel import CommandLabel as CommandLabel
+from command_label import CommandLabel as CommandLabel
 from settings import *
 from unix_socket import UnixSocket
 from hotkey_thread import HotḱeyThread
 from gaze_thread import GazeThread
 from states import *
+from gaze_pointer import GazePointer
 
 mouse = Controller()
 
@@ -24,16 +25,27 @@ sock_keypress = UnixSocket(Sockets.keypress, 100)
 screenGeometry = None
 
 
+def rel2abs(point):
+    return QPoint(
+        int(point.x() * screenGeometry.width()),
+        int(point.y() * screenGeometry.height()),
+    )
+
+
 class App(QObject):
+    widget = None
+    gridWidget = None
     labels = {}
+    gazePointer = None
+
     gridState = GridState()
 
     hoverItem = None
 
     hoverTimer = None
     clickTimer = None
-    currPos = (0, 0)
-    lastPos = (0, 0)
+    currPos = QPointF(0, 0)
+    lastPos = QPointF(0, 0)
     counter = 0
 
     def __init__(self):
@@ -65,12 +77,17 @@ class App(QObject):
         self.widget.setGeometry(screenGeometry)
         self.widget.setFocusPolicy(Qt.NoFocus)
 
+        self.gridWidget = QWidget(self.widget)
+        self.gridWidget.hide()
+        self.gridWidget.setGeometry(screenGeometry)
+        self.gridWidget.setFocusPolicy(Qt.NoFocus)
+
         dx = int(screenGeometry.width() / Tiles.x)
         dy = int(screenGeometry.height() / Tiles.y)
 
         for y in range(Tiles.y):
             for x in range(Tiles.x):
-                label = CommandLabel(self.widget)
+                label = CommandLabel(self.gridWidget)
                 label.setAlignment(Qt.AlignCenter)
                 label.setGeometry(x * dx, y * dy, dx, dy)
                 label.installEventFilter(self)
@@ -80,8 +97,10 @@ class App(QObject):
 
         self.updateGrid()
 
+        self.gazePointer = GazePointer(self.widget)
+
         self.widget.setWindowTitle("eyeput")
-        # self.widget.show()
+        self.widget.show()
 
     def setLevel(self, levelId):
         self.gridState.lvl = levelId
@@ -105,14 +124,14 @@ class App(QObject):
         for key, item in Levels[self.gridState.lvl].items():
             label = self.labels[(item.x, item.y)]
             label.id = key
-            label.item = item
+            label.setItem(item)
             label.setModifiers(self.gridState.modifiers)
             label.setText(item.label)
-            label.setVisible(True)
+            label.show()
 
         for label in self.labels.values():
             if label.id == None:
-                label.setVisible(False)
+                label.hide()
 
     def onGridGaze(self, x, y):
         if not QRectF(0, 0, 1, 1).contains(x, y):
@@ -145,10 +164,13 @@ class App(QObject):
 
     @pyqtSlot(float, float)
     def onGaze(self, x, y):
-        self.currPos = (x, y)
+        self.currPos = QPointF(x, y)
         self.gridState.setMousePos(x, y)
         if self.gridState.state == GridActivationState.SELECTING:
             self.onGridGaze(x, y)
+
+        if self.gazePointer.isVisible():
+            self.gazePointer.move(rel2abs(self.currPos))
 
     @pyqtSlot()
     def selectItem(self):
@@ -189,7 +211,7 @@ class App(QObject):
     @pyqtSlot()
     def toggle(self):
         self.setHoveredItem(None)
-        self.widget.setVisible(not self.widget.isVisible())
+        self.gridWidget.setVisible(not self.gridWidget.isVisible())
 
         self.gridState.modifiers.clear()
         self.hoverTimer.stop()
@@ -198,16 +220,15 @@ class App(QObject):
     def onHotkeyPressed(self):
         self.gridState.hotkeyTriggered()
 
-        if not QRectF(0, 0, 1, 1).contains(self.currPos[0], self.currPos[1]):
+        if not QRectF(0, 0, 1, 1).contains(self.currPos):
             log_debug("hotkey pressed outside")
             return
 
-        xWidget = int(Tiles.x * self.currPos[0])
-        yWidget = int(Tiles.y * self.currPos[1])
+        xWidget = int(Tiles.x * self.currPos.x())
+        yWidget = int(Tiles.y * self.currPos.y())
         widget = self.labels[(xWidget, yWidget)]
         self.setHoveredItem(widget)
 
-        print(self.currPos)
         if widget:
             log_debug("hotkey pressed over: " + widget.id)
 
@@ -216,17 +237,14 @@ class App(QObject):
         if lvl:
             self.updateGrid()
 
-        if lvl and not self.widget.isVisible():
+        if lvl and not self.gridWidget.isVisible():
             self.toggle()
-        elif not lvl and self.widget.isVisible():
+        elif not lvl and self.gridWidget.isVisible():
             self.toggle()
 
     @pyqtSlot()
     def processMouse(self):
-        dist = (
-            abs(self.currPos[0] - self.lastPos[0]) * screenGeometry.width()
-            + abs(self.currPos[1] - self.lastPos[1]) * screenGeometry.height()
-        )
+        dist = rel2abs(self.currPos - self.lastPos).manhattanLength()
 
         if dist > 10:
             self.mouseMoveTime = time()
@@ -234,7 +252,13 @@ class App(QObject):
 
         elif time() - self.mouseMoveTime > Times.delayBeforeClick:
             log_debug("mouse click")
+            pos = rel2abs(self.currPos)
+            oldPos = mouse.position
+
+            mouse.position = (pos.x(), pos.y())
             mouse.click(Button.left, 1)
+            mouse.position = oldPos
+
             self.clickTimer.stop()
 
         self.lastPos = self.currPos

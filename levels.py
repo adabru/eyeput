@@ -202,7 +202,7 @@ Levels = {
             1,
             0,
             f"code {os.path.dirname(__file__)}",
-            img=f"{os.path.dirname(__file__)}/resources/images/vsc.png",
+            img=f"{os.path.dirname(__file__)}/resources/vsc.png",
         ),
         # row 1
         "terminal": CmdAction(
@@ -225,14 +225,14 @@ Levels = {
             1,
             2,
             "xdg-open https://meet.golem.de/ &",
-            img=f"{os.path.dirname(__file__)}/resources/images/jitsi.png",
+            img=f"{os.path.dirname(__file__)}/resources/jitsi.png",
         ),
         "github": CmdAction(
             "github",
             2,
             2,
             "xdg-open https://github.com/adabru &",
-            img=f"{os.path.dirname(__file__)}/resources/images/web-github-icon.png",
+            img=f"{os.path.dirname(__file__)}/resources/web-github-icon.png",
         ),
         "github": CmdAction(
             "github",

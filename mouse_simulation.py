@@ -22,7 +22,7 @@ w = int(m.group(1))
 h = int(m.group(2))
 
 while True:
-    time.sleep(0.1)
+    time.sleep(0.01)
 
     x_rel = (mouse.position[0] - margin) / (w - 2 * margin)
     y_rel = (mouse.position[1] - margin) / (h - 2 * margin)

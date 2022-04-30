@@ -18,11 +18,13 @@ class CommandLabel(QLabel):
         super().__init__(*args, **kwargs)
         self.setStyleSheet(f"background-color: {Colors.item};")
 
+    def setItem(self, item):
+        self.item = item
         if self.item and self.item.img:
-            pixmap = QPixmap(self.item.img)
-            if pixmap.height() == 0:
-                pixmap = QPixmap(
-                    f"{os.path.dirname(__file__)}/resources/images/missing.png"
+            self.pixmap = QPixmap(self.item.img)
+            if self.pixmap.height() == 0:
+                self.pixmap = QPixmap(
+                    f"{os.path.dirname(__file__)}/resources/missing.png"
                 )
 
     def setModifiers(self, modifiers):
@@ -34,7 +36,6 @@ class CommandLabel(QLabel):
         self.update()
 
     def paintEvent(self, event):
-
         painter = QPainter(self)
 
         # draw image
@@ -68,6 +69,7 @@ class CommandLabel(QLabel):
             self.text(),
         )
 
+        # draw modifier cirlces
         if len(self.modifiers) > 0:
             painter.setPen(Colors.modifierBorder)
 
@@ -85,5 +87,3 @@ class CommandLabel(QLabel):
                 painter.drawRoundedRect(
                     int(i * (dotWidth + gap) + leftBorder), 10, dotWidth, dotWidth, 2, 2
                 )
-
-        painter.end()
