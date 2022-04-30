@@ -12,10 +12,18 @@ class CommandLabel(QLabel):
     id = ""
     item = None
     hovered = False
+    pixmap = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setStyleSheet(f"background-color: {Colors.item};")
+
+        if self.item and self.item.img:
+            pixmap = QPixmap(self.item.img)
+            if pixmap.height() == 0:
+                pixmap = QPixmap(
+                    f"{os.path.dirname(__file__)}/resources/images/missing.png"
+                )
 
     def setModifiers(self, modifiers):
         self.modifiers = modifiers
@@ -30,15 +38,8 @@ class CommandLabel(QLabel):
         painter = QPainter(self)
 
         # draw image
-        if self.item and hasattr(self.item, "img"):
-            pixmap = QPixmap(self.item.img)
-            if pixmap.height() == 0:
-                pixmap = QPixmap(
-                    f"{os.path.dirname(__file__)}/resources/images/missing.png"
-                )
-                print(f"{os.path.dirname(__file__)}/resources/images/missing.png")
-
-            pixmapRatio = float(pixmap.width()) / pixmap.height()
+        if self.pixmap:
+            pixmapRatio = float(self.pixmap.width()) / self.pixmap.height()
             windowRatio = float(self.width()) / self.height()
 
             newWidth = min(self.width(), Tiles.maxSide)
@@ -46,7 +47,7 @@ class CommandLabel(QLabel):
             dx = (newHeight - self.width()) / -2
             dy = (newHeight - self.height()) / -2
 
-            painter.drawPixmap(dx, dy, newWidth, newHeight, pixmap)
+            painter.drawPixmap(dx, dy, newWidth, newHeight, self.pixmap)
 
         # draw hover cirlce
         painter.setPen(Colors.circleBorder)

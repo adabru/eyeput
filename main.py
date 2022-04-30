@@ -8,7 +8,7 @@ from PyQt5.QtCore import QObject, pyqtSlot, Qt, QTimer, QRectF
 from PyQt5.QtGui import QFont, QColor, QPainter, QPixmap
 from pynput.mouse import Button, Controller
 
-from levels import Levels, Layout
+from levels import *
 from commandlabel import CommandLabel as CommandLabel
 from settings import *
 from unix_socket import UnixSocket
@@ -56,8 +56,10 @@ class App(QObject):
         self.widget.setWindowFlags(
             Qt.FramelessWindowHint
             | Qt.WindowStaysOnTopHint
+            # bypass is not stable (https://doc.qt.io/qt-5/qwidget.html#showFullScreen)
             | Qt.X11BypassWindowManagerHint
         )
+        # full screen has issues (https://doc.qt.io/qt-5/qwidget.html#showFullScreen)
         # self.widget.setWindowState(Qt.WindowFullScreen)
 
         self.widget.setGeometry(screenGeometry)
@@ -169,9 +171,6 @@ class App(QObject):
 
             self.updateGrid()
 
-        elif not self.hoverItem:
-            log_debug("no hover item")
-
         elif self.hoverItem.id == "click":
             self.clickTimer.setInterval(Times.clickAfter)
             self.clickTimer.start()
@@ -179,16 +178,12 @@ class App(QObject):
             self.gridState.hold = False
             self.gridState.selectionCompleted()
 
-        elif hasattr(self.hoverItem.item, "pressKey"):
+        elif isinstance(self.hoverItem.item, KeyAction):
             self.pressKey(self.hoverItem.item.pressKey)
             self.gridState.selectionCompleted()
 
-        elif hasattr(self.hoverItem.item, "cmd"):
+        elif isinstance(self.hoverItem.item, CmdAction):
             subprocess.Popen(self.hoverItem.item.cmd, shell=True)
-            self.gridState.selectionCompleted()
-
-        else:
-            self.pressKey(self.hoverItem.item.label)
             self.gridState.selectionCompleted()
 
     @pyqtSlot()
@@ -232,8 +227,6 @@ class App(QObject):
             abs(self.currPos[0] - self.lastPos[0]) * screenGeometry.width()
             + abs(self.currPos[1] - self.lastPos[1]) * screenGeometry.height()
         )
-        if dist > 0:
-            log_debug("dist: " + str(dist))
 
         if dist > 10:
             self.mouseMoveTime = time()

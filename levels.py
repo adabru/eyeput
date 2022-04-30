@@ -12,11 +12,12 @@ class InternalAction:
 
 
 class KeyAction:
-    def __init__(self, label, x, y, pressKey=None):
+    def __init__(self, label, x, y, pressKey=None, img=None):
         self.label = label
         self.x = x
         self.y = y
-        self.pressKey = pressKey
+        self.img = img
+        self.pressKey = pressKey or label
 
 
 class CmdAction:
