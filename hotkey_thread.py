@@ -4,7 +4,6 @@ from PyQt5.QtCore import (
     QThread,
 )
 
-from unix_socket import UnixSocket
 from settings import *
 
 

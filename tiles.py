@@ -29,7 +29,7 @@ class CmdAction:
         self.img = img
 
 
-Levels = {
+tiles = {
     "keyboard1": {
         # row 0
         "a": KeyAction("a", 0, 0),
@@ -243,30 +243,3 @@ Levels = {
         ),
     },
 }
-
-
-class Layout:
-    def findLevel(x, y):
-        for lvl in Layout.areas:
-            if Layout.areas[lvl].contains(x, y):
-                return lvl
-        return None
-
-    areas = {
-        # diag top left
-        "textCmds": QRectF(-1, -1, 1, 1),
-        # top left
-        "keyboard1": QRectF(0, -1, 0.5, 1),
-        # top right
-        "keyboard2": QRectF(0.5, -1, 0.5, 1),
-        # left
-        "apps": QRectF(-1, 0, 1, 1),
-    }
-    # areas = {
-    #     # top
-    #     "keyboard1": QRectF(0, -1, 1, 1),
-    #     # bottom
-    #     "keyboard2": QRectF(0, 1, 1, 1),
-    #     # left
-    #     "textCmds": QRectF(-1, 0, 1, 1),
-    # }

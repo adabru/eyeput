@@ -15,7 +15,7 @@ sock_gaze = UnixSocket(Sockets.gaze, 100)
 
 run = subprocess.run("xrandr | grep '*'", capture_output=True, shell=True)
 
-subprocess.Popen("./main.py", shell=True)
+# subprocess.Popen("./main.py", shell=True)
 
 m = re.search("([\d]+)x([\d]+)", str(run.stdout))
 w = int(m.group(1))

@@ -8,13 +8,13 @@ from PyQt5.QtCore import QObject, pyqtSlot, Qt, QTimer, QRectF, QPoint, QPointF
 from PyQt5.QtGui import QFont, QColor, QPainter, QPixmap
 from pynput.mouse import Button, Controller
 
-from levels import *
+from tiles import *
 from command_label import CommandLabel as CommandLabel
 from settings import *
 from unix_socket import UnixSocket
 from hotkey_thread import HotḱeyThread
 from gaze_thread import GazeThread
-from states import *
+from activation import *
 from gaze_pointer import GazePointer
 
 mouse = Controller()
@@ -32,11 +32,18 @@ def rel2abs(point):
     )
 
 
+class GridState:
+    lvl = ""
+    hold = False
+    modifiers = set()
+
+
 class App(QObject):
     widget = None
     gridWidget = None
     labels = {}
     gazePointer = None
+    activation = GridActivation()
 
     gridState = GridState()
 
@@ -60,7 +67,7 @@ class App(QObject):
         self.clickTimer = QTimer(self)
         self.clickTimer.timeout.connect(self.processMouse)
 
-        self.gridState.activate_grid_signal.connect(self.activateGrid)
+        self.activation.activate_grid_signal.connect(self.activation_changed)
 
         self.widget = QWidget()
         self.widget.setAttribute(Qt.WA_TranslucentBackground, True)
@@ -95,8 +102,6 @@ class App(QObject):
 
                 self.labels[(x, y)] = label
 
-        self.updateGrid()
-
         self.gazePointer = GazePointer(self.widget)
 
         self.widget.setWindowTitle("eyeput")
@@ -121,7 +126,7 @@ class App(QObject):
             label.id = None
             # self.hoverItem.setHovered(False)
 
-        for key, item in Levels[self.gridState.lvl].items():
+        for key, item in tiles[self.gridState.lvl].items():
             label = self.labels[(item.x, item.y)]
             label.id = key
             label.setItem(item)
@@ -165,8 +170,8 @@ class App(QObject):
     @pyqtSlot(float, float)
     def onGaze(self, x, y):
         self.currPos = QPointF(x, y)
-        self.gridState.setMousePos(x, y)
-        if self.gridState.state == GridActivationState.SELECTING:
+        self.activation.update_gaze(x, y)
+        if self.activation.state == GridActivationState.SELECTING:
             self.onGridGaze(x, y)
 
         if self.gazePointer.isVisible():
@@ -180,7 +185,7 @@ class App(QObject):
         if self.hoverItem.id == "hold":
             self.gridState.hold = not self.gridState.hold
 
-        elif self.hoverItem.id in Levels:
+        elif self.hoverItem.id in tiles:
             self.setLevel(self.hoverItem.id)
 
         elif self.hoverItem.id in modifierColors:
@@ -195,22 +200,23 @@ class App(QObject):
             self.clickTimer.start()
             self.mouseMoveTime = time()
             self.gridState.hold = False
-            self.gridState.selectionCompleted()
+            self.activation.go_idle()
 
         elif isinstance(self.hoverItem.item, KeyAction):
             self.pressKey(self.hoverItem.item.pressKey)
-            self.gridState.selectionCompleted()
+            if not self.gridState.hold:
+                self.activation.go_idle()
 
         elif isinstance(self.hoverItem.item, CmdAction):
             subprocess.Popen(self.hoverItem.item.cmd, shell=True)
-            self.gridState.selectionCompleted()
+            self.activation.go_idle()
 
     @pyqtSlot()
     def toggle(self):
         self.setHoveredItem(None)
         self.gridWidget.setVisible(not self.gridWidget.isVisible())
-
         self.gridState.modifiers.clear()
+        self.gridState.hold = False
         self.hoverTimer.stop()
 
     @pyqtSlot()
@@ -230,13 +236,12 @@ class App(QObject):
             log_debug("hotkey pressed over: " + widget.id)
 
     @pyqtSlot(str)
-    def activateGrid(self, lvl):
+    def activation_changed(self, lvl):
         if lvl:
-            self.updateGrid()
-
-        if lvl and not self.gridWidget.isVisible():
-            self.toggle()
-        elif not lvl and self.gridWidget.isVisible():
+            self.setLevel(lvl)
+            if not self.gridWidget.isVisible():
+                self.toggle()
+        elif self.gridWidget.isVisible():
             self.toggle()
 
     @pyqtSlot()

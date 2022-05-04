@@ -1,8 +1,12 @@
 from PyQt5.QtGui import QColor
+from PyQt5.QtCore import QMarginsF
 
 
-activate_keypress = True  # DEFAULT: True - can be deactivated when debugging
+# DEFAULT: True - can be deactivated when debugging
+activate_keypress = True
 
+# The gaze may flicker. This is the threshold to acknowledge a border crossing between two areas.
+border_threshold = QMarginsF(0.008, 0.008, 0.008, 0.008)
 
 modifierColors = {
     "win": QColor(0x61A0AF),
