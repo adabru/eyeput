@@ -34,7 +34,11 @@ class Colors:
 
 
 class Times:
-    deactivateAfter = 1000
-    selectAfter = 1000
+    # When looking outside the grid appears. But if the gaze stays outside, the grid disappears after deactivateAfter time.
+    deactivateAfter = 0.2
+    # The gaze has to stay selectAfter seconds on one element to activate it.
+    selectAfter = 0.5
+    # When activating the click element, you have delayBeforeClick seconds to move the mouse.
     delayBeforeClick = 0.6
-    clickAfter = 50
+    # You have to stay clickAfter seconds on one spot for the click to trigger.
+    clickAfter = 0.05

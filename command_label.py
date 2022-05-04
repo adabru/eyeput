@@ -45,8 +45,8 @@ class CommandLabel(QLabel):
 
             newWidth = min(self.width(), Tiles.maxSide)
             newHeight = int(newWidth / pixmapRatio)
-            dx = (newHeight - self.width()) / -2
-            dy = (newHeight - self.height()) / -2
+            dx = int((newHeight - self.width()) / -2)
+            dy = int((newHeight - self.height()) / -2)
 
             painter.drawPixmap(dx, dy, newWidth, newHeight, self.pixmap)
 

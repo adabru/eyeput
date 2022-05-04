@@ -19,7 +19,6 @@ class UnixSocket:
             self.send(msg)
 
         except (BrokenPipeError, ConnectionRefusedError) as e:
-            print(e)
             self.sock.close()
             self.reconnect = True
 

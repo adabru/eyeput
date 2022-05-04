@@ -156,7 +156,7 @@ class App(QObject):
             return
 
         if widget != None and widget.isVisible():
-            self.hoverTimer.start(Times.selectAfter)
+            self.hoverTimer.start(int(Times.selectAfter * 1000))
         else:
             self.hoverTimer.stop()
 
@@ -182,19 +182,16 @@ class App(QObject):
 
         elif self.hoverItem.id in Levels:
             self.setLevel(self.hoverItem.id)
-            self.gridState.hold = True
 
         elif self.hoverItem.id in modifierColors:
             if self.hoverItem.id in self.gridState.modifiers:
                 self.gridState.modifiers.remove(self.hoverItem.id)
             else:
                 self.gridState.modifiers.add(self.hoverItem.id)
-            hold = True
-
             self.updateGrid()
 
         elif self.hoverItem.id == "click":
-            self.clickTimer.setInterval(Times.clickAfter)
+            self.clickTimer.setInterval(int(Times.clickAfter * 1000))
             self.clickTimer.start()
             self.mouseMoveTime = time()
             self.gridState.hold = False

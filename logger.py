@@ -8,7 +8,7 @@ class LogLvl(Enum):
     DEBUG = 3
 
 
-logLevel = LogLvl.DEBUG
+logLevel = LogLvl.INFO
 
 
 def log_info(s):

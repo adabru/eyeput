@@ -96,7 +96,7 @@ class GridState(QObject):
             else:
                 log_debug("TRANS 0-1 : none")
             self.activate_grid_signal.emit(self.lvl)
-            self.deactivateTimer.start(Times.deactivateAfter)
+            self.deactivateTimer.start(int(Times.deactivateAfter * 1000))
 
         # TRANS 1-1
         elif self.state == GridActivationState.GRID_ACIVATE and not gazeIsInside:
@@ -109,7 +109,7 @@ class GridState(QObject):
 
                 self.lvl = newLvl
                 self.activate_grid_signal.emit(self.lvl)
-                self.deactivateTimer.start(Times.deactivateAfter)
+                self.deactivateTimer.start(int(Times.deactivateAfter * 1000))
 
         # TRANS 1-2
         elif self.state == GridActivationState.GRID_ACIVATE and gazeIsInside:
@@ -122,6 +122,7 @@ class GridState(QObject):
         elif self.state == GridActivationState.SELECTING and not gazeIsInside:
             log_debug("TRANS 2-3")
             self.state = GridActivationState.GRID_DEACTIVATE
+            self.hold = False
 
             self.activate_grid_signal.emit("")
 

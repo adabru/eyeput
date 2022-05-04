@@ -4,10 +4,10 @@ This python application offers complete desktop control via eye tracking.
 
 ```sh
 # application dependencies
-pip install PyQt5 pynput 
+pip install PyQt5 pynput
 
 # https://github.com/boppreh/keyboard
-sudo pip install keyboard
+sudo pip install git+https://github.com/boppreh/keyboard.git
 
 # add to global path for hotkey configuration
 sudo ln -s $PWD/eyeput.sh /usr/local/bin/eyeput
@@ -26,7 +26,6 @@ TODO
 - unicode symbols
 - special clicks: double, etc.
 - eye blinking for clicking?
-
 
 KNOWN ISSUES:
 

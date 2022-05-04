@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
-import os
 import time
+
 import keyboard
 
 # local
@@ -19,9 +19,8 @@ while True:
         # Receive the data in small chunks and retransmit it
         while True:
             keyboardCode = sock_keyboard.receive()
-
             # activate keyboard
-            keyboard.press_and_release("shift")
+            keyboard.press_and_release("shiftl")
             time.sleep(0.02)
             keyboard.press_and_release(keyboardCode)
 
