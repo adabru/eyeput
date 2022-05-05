@@ -212,16 +212,8 @@ class App(QObject):
             self.activation.go_idle()
 
     @pyqtSlot()
-    def toggle(self):
-        self.setHoveredItem(None)
-        self.gridWidget.setVisible(not self.gridWidget.isVisible())
-        self.gridState.modifiers.clear()
-        self.gridState.hold = False
-        self.hoverTimer.stop()
-
-    @pyqtSlot()
     def onHotkeyPressed(self):
-        self.gridState.hotkeyTriggered()
+        self.activation.hotkeyTriggered()
 
         if not QRectF(0, 0, 1, 1).contains(self.currPos):
             log_debug("hotkey pressed outside")
@@ -240,9 +232,13 @@ class App(QObject):
         if lvl:
             self.setLevel(lvl)
             if not self.gridWidget.isVisible():
-                self.toggle()
+                self.gridWidget.show()
         elif self.gridWidget.isVisible():
-            self.toggle()
+            self.setHoveredItem(None)
+            self.gridState.modifiers.clear()
+            self.gridState.hold = False
+            self.hoverTimer.stop()
+            self.gridWidget.hide()
 
     @pyqtSlot()
     def processMouse(self):

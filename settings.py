@@ -6,7 +6,7 @@ from PyQt5.QtCore import QMarginsF
 activate_keypress = True
 
 # The gaze may flicker. This is the threshold to acknowledge a border crossing between two areas.
-border_threshold = QMarginsF(0.008, 0.008, 0.008, 0.008)
+border_threshold = QMarginsF(0.015, 0.015, 0.015, 0.015)
 
 modifierColors = {
     "win": QColor(0x61A0AF),
@@ -39,7 +39,7 @@ class Colors:
 
 class Times:
     # When looking outside the grid appears. But if the gaze stays outside, the grid disappears after deactivateAfter time.
-    deactivateAfter = 0.2
+    deactivateAfter = 0.5
     # The gaze has to stay selectAfter seconds on one element to activate it.
     selectAfter = 0.5
     # When activating the click element, you have delayBeforeClick seconds to move the mouse.
