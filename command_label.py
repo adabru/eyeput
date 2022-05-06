@@ -50,15 +50,6 @@ class CommandLabel(QLabel):
 
             painter.drawPixmap(dx, dy, newWidth, newHeight, self.pixmap)
 
-        # draw hover cirlce
-        painter.setPen(Colors.circleBorder)
-        if self.hovered:
-            painter.setBrush(Colors.circle_hovered)
-        else:
-            painter.setBrush(Colors.circle)
-
-        painter.drawEllipse(self.rect().center() + QPoint(1, 1), 14, 14)
-
         # draw text
         fontSize = 20
         painter.setFont(QFont("Arial", fontSize))
@@ -68,6 +59,14 @@ class CommandLabel(QLabel):
             Qt.AlignCenter,
             self.text(),
         )
+
+        # draw hover cirlce
+        painter.setPen(Colors.circleBorder)
+        if self.hovered:
+            painter.setBrush(Colors.circle_hovered)
+        else:
+            painter.setBrush(Colors.circle)
+        painter.drawEllipse(self.rect().center() + QPoint(1, 1), 7, 7)
 
         # draw modifier cirlces
         if len(self.modifiers) > 0:
