@@ -1,10 +1,5 @@
 from enum import Enum
-from PyQt5.QtCore import (
-    pyqtSignal,
-    QTimer,
-    QObject,
-    QRectF,
-)
+from PyQt5.QtCore import pyqtSignal, QTimer, QObject, QRectF
 
 from logger import *
 from settings import *
@@ -49,15 +44,15 @@ class GridActivation(QObject):
     state = GridActivationState.IDLE
     last_area = None
 
-    deactivateTimer = None
+    deactivate_timer = None
 
     activate_grid_signal = pyqtSignal(str)
 
     def __init__(self):
         super().__init__()
 
-        self.deactivateTimer = QTimer(self)
-        self.deactivateTimer.timeout.connect(self._deactivateGrid)
+        self.deactivate_timer = QTimer(self)
+        self.deactivate_timer.timeout.connect(self._deactivate)
 
     def _find_area(self, x, y):
         for area in areas:
@@ -65,26 +60,23 @@ class GridActivation(QObject):
                 return area
         return None
 
-    def _deactivateGrid(self):
-        self.deactivateTimer.stop()
-
-        if self.state == GridActivationState.PRE_SELECTING:
-            log_debug("PRE_SELECTING → PRE_IDLE")
-            self.state = GridActivationState.PRE_IDLE
-            self._trigger()
-        else:
-            log_debug(
-                "invalid state when deactivateTimer triggered: " + self.state.name
-            )
+    def _deactivate(self):
+        assert self.state == GridActivationState.PRE_SELECTING, self.state
+        # for unknown reasons this function can fire twice if not stopping the timer
+        self.deactivate_timer.stop()
+        log_debug("PRE_SELECTING → PRE_IDLE : _deactivate")
+        self.state = GridActivationState.PRE_IDLE
+        self._trigger()
 
     def _trigger(self, area=None):
         """..."""
         self.activate_grid_signal.emit(area and area.target)
 
     def go_idle(self):
+        assert self.state == GridActivationState.SELECTING, self.state
         log_debug("SELECTING → IDLE")
         self.state = GridActivationState.IDLE
-        self._trigger()
+        QTimer.singleShot(50, self._trigger)
 
     def hotkeyTriggered(self):
         if self.state == GridActivationState.IDLE:
@@ -119,21 +111,18 @@ class GridActivation(QObject):
                 log_debug("IDLE → PRE_SELECTING : " + str(area and area.label))
                 self.state = GridActivationState.PRE_SELECTING
                 self._trigger(area)
-                self.deactivateTimer.start(int(Times.deactivateAfter * 1000))
+                self.deactivate_timer.start(int(Times.out_of_screen * 1000))
 
         elif self.state == GridActivationState.PRE_SELECTING:
             if out_of_bounds_or_blinking:
-                log_debug("PRE_SELECTING → PRE_IDLE")
+                log_debug("PRE_SELECTING → PRE_IDLE : out_of_bounds_or_blinking")
                 self.state = GridActivationState.PRE_IDLE
                 self._trigger()
-            elif gaze_is_outside and area != self.last_area:
-                log_debug("PRE_SELECTING → PRE_SELECTING : " + str(area and area.label))
-                self._trigger(area)
-                self.deactivateTimer.start(int(Times.deactivateAfter * 1000))
+                self.deactivate_timer.stop()
             elif gaze_is_inside:
                 log_debug("PRE_SELECTING → SELECTING")
                 self.state = GridActivationState.SELECTING
-                self.deactivateTimer.stop()
+                self.deactivate_timer.stop()
 
         elif self.state == GridActivationState.SELECTING:
             if out_of_bounds_or_blinking or gaze_is_outside:

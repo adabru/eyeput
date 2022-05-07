@@ -177,7 +177,7 @@ tiles = {
         "F11": KeyAction("F11", 10, 4),
         "F12": KeyAction("F12", 11, 4),
         # row 5
-        "hold": InternalAction("hold", 11, 5),
+        "hold": InternalAction("∞", 11, 5),
         "keyboard1": InternalAction("➀", 12, 5),
         "textCmds": InternalAction("➂", 13, 5),
     },
@@ -191,7 +191,7 @@ tiles = {
         # row 3
         # row 4
         # row 5
-        "hold": InternalAction("hold", 11, 5),
+        "hold": InternalAction("∞", 11, 5),
         "keyboard1": InternalAction("➀", 12, 5),
         "keyboard2": InternalAction("➁", 13, 5),
     },

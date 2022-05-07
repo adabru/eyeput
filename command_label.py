@@ -2,7 +2,7 @@ import os.path
 
 from PyQt5.QtWidgets import QLabel
 from PyQt5.QtGui import QFont, QColor, QPainter, QPixmap
-from PyQt5.QtCore import Qt, QPoint, QRect
+from PyQt5.QtCore import Qt, QPoint, QRect, QTimer
 
 from settings import *
 
@@ -12,11 +12,15 @@ class CommandLabel(QLabel):
     id = ""
     item = None
     hovered = False
+    toggled = False
+    activated = False
     pixmap = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setStyleSheet(f"background-color: {Colors.item};")
+        self.deactivate_timer = QTimer(self)
+        self.deactivate_timer.timeout.connect(self._deactivate)
 
     def setItem(self, item):
         self.item = item
@@ -33,6 +37,21 @@ class CommandLabel(QLabel):
 
     def setHovered(self, value):
         self.hovered = value
+        self.update()
+
+    def setToggled(self, value):
+        self.toggled = value
+        self.update()
+
+    def activate(self):
+        """..."""
+        self.activated = True
+        self.deactivate_timer.start(int(Times.selection_feedback * 1000))
+        self.update()
+
+    def _deactivate(self):
+        """..."""
+        self.activated = False
         self.update()
 
     def paintEvent(self, event):
@@ -61,12 +80,16 @@ class CommandLabel(QLabel):
         )
 
         # draw hover cirlce
-        painter.setPen(Colors.circleBorder)
-        if self.hovered:
+        painter.setPen(Colors.circle_border)
+        if self.activated:
+            painter.setBrush(Colors.circle_activated)
+        elif self.toggled:
+            painter.setBrush(Colors.circle_toggled)
+        elif self.hovered:
             painter.setBrush(Colors.circle_hovered)
         else:
             painter.setBrush(Colors.circle)
-        painter.drawEllipse(self.rect().center() + QPoint(1, 1), 7, 7)
+        painter.drawEllipse(self.rect().center() + QPoint(1, 1), 5, 5)
 
         # draw modifier cirlces
         if len(self.modifiers) > 0:

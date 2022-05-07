@@ -124,6 +124,7 @@ class App(QObject):
     def updateGrid(self):
         for label in self.labels.values():
             label.id = None
+            label.setToggled(False)
             # self.hoverItem.setHovered(False)
 
         for key, item in tiles[self.gridState.lvl].items():
@@ -133,6 +134,11 @@ class App(QObject):
             label.setModifiers(self.gridState.modifiers)
             label.setText(item.label)
             label.show()
+            # special cases
+            if label.id == "hold" and self.gridState.hold:
+                label.setToggled(True)
+            elif label.id in self.gridState.modifiers:
+                label.setToggled(True)
 
         for label in self.labels.values():
             if label.id == None:
@@ -161,7 +167,7 @@ class App(QObject):
             return
 
         if widget != None and widget.isVisible():
-            self.hoverTimer.start(int(Times.selectAfter * 1000))
+            self.hoverTimer.start(int(Times.element_selection * 1000))
         else:
             self.hoverTimer.stop()
 
@@ -181,9 +187,11 @@ class App(QObject):
     def selectItem(self):
         log_info("selectItem: " + self.hoverItem.id)
         self.hoverTimer.stop()
+        self.hoverItem.activate()
 
         if self.hoverItem.id == "hold":
             self.gridState.hold = not self.gridState.hold
+            self.updateGrid()
 
         elif self.hoverItem.id in tiles:
             self.setLevel(self.hoverItem.id)
@@ -196,7 +204,7 @@ class App(QObject):
             self.updateGrid()
 
         elif self.hoverItem.id == "click":
-            self.clickTimer.setInterval(int(Times.clickAfter * 1000))
+            self.clickTimer.setInterval(int(Times.click * 1000))
             self.clickTimer.start()
             self.mouseMoveTime = time()
             self.gridState.hold = False
@@ -248,7 +256,7 @@ class App(QObject):
             self.mouseMoveTime = time()
             log_debug("mouse moved: " + str(dist))
 
-        elif time() - self.mouseMoveTime > Times.delayBeforeClick:
+        elif time() - self.mouseMoveTime > Times.mouse_movement:
             log_debug("mouse click")
             pos = rel2abs(self.currPos)
             oldPos = mouse.position
