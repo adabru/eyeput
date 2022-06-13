@@ -12,7 +12,7 @@ modifierColors = {
     "win": QColor(0x61A0AF),
     "alt": QColor(0x96C9DC),
     "ctrl": QColor(0xF9B9B7),
-    "shiftl": QColor(0xF5D491),
+    "shift": QColor(0xF5D491),
 }
 
 

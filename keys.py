@@ -20,7 +20,7 @@ while True:
         while True:
             keyboardCode = sock_keyboard.receive()
             # activate keyboard
-            keyboard.press_and_release("shiftl")
+            keyboard.press_and_release("shift")
             time.sleep(0.02)
             keyboard.press_and_release(keyboardCode)
 

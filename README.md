@@ -8,9 +8,13 @@ pip install PyQt5 pynput
 
 # https://github.com/boppreh/keyboard
 sudo pip install git+https://github.com/boppreh/keyboard.git
+# sudo pip uninstall keyboard
 
 # add to global path for hotkey configuration
 sudo ln -s $PWD/eyeput.sh /usr/local/bin/eyeput
+
+# use your xkb layout as default console keymap
+sudo sh -c "echo KEYMAP=de-latin1 > /etc/vconsole.conf"
 
 # enable start on system start
 sudo sed "s|__PWD__|$PWD|" ./eyeput.keys.service | sudo tee /etc/systemd/system/eyeput.keys.service
