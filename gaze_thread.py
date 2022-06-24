@@ -5,15 +5,26 @@ from PyQt5.QtCore import (
 
 from unix_socket import UnixSocket
 from settings import *
+from dsp import *
 
 sock_gaze = UnixSocket(Sockets.gaze, 100)
+gaze_filter = GazeFilter()
+blink_filter = BlinkFilter()
+
+# for debugging
+from graph import *
+
+graph = Graph()
 
 
 class GazeThread(QThread):
     gaze_signal = pyqtSignal(float, float)
+    blink_signal = pyqtSignal(bool, bool)
 
     def __init__(self):
         super().__init__()
+        # for debugging
+        graph.setup()
 
     def run(self):
         sock_gaze.listen()
@@ -25,8 +36,13 @@ class GazeThread(QThread):
                 # Receive the data in small chunks and retransmit it
                 while True:
                     gaze_frame = sock_gaze.receive()
-                    [t, x, y] = gaze_frame.split(" ")
-                    self.gaze_signal.emit(float(x), float(y))
+                    [t, l0, l1, r0, r1] = [float(x) for x in gaze_frame.split(" ")]
+                    [x, y] = gaze_filter.transform(t, l0, l1, r0, r1)
+                    blink = blink_filter.transform(t, l0, l1, r0, r1)
+                    self.gaze_signal.emit(x, y)
+                    # if any(blink):
+                    #     self.blink_signal.emit(*blink)
+                    graph.gaze_signal.emit(t, l0, l1, r0, r1, x, y)
 
             except RuntimeError as err:
                 print(err)

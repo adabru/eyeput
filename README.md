@@ -5,6 +5,8 @@ This python application offers complete desktop control via eye tracking.
 ```sh
 # application dependencies
 pip install PyQt5 pynput
+# optional development dependencies
+pip install pyqtgraph pyopengl numpy
 
 # https://github.com/boppreh/keyboard
 sudo pip install git+https://github.com/boppreh/keyboard.git

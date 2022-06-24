@@ -173,6 +173,13 @@ class App(QObject):
 
         self.setHoveredItem(widget)
 
+    @pyqtSlot(bool, bool)
+    def onBlink(self, l, r):
+        if l and not r:
+            mouse.click(Button.left, 1)
+        elif not l and r:
+            mouse.click(Button.right, 1)
+
     @pyqtSlot(float, float)
     def onGaze(self, x, y):
         self.currPos = QPointF(x, y)
@@ -291,6 +298,7 @@ hotkey_thread.hotkey_signal.connect(app.onHotkeyPressed, Qt.QueuedConnection)
 
 gaze_thread = GazeThread()
 gaze_thread.gaze_signal.connect(app.onGaze, Qt.QueuedConnection)
+gaze_thread.blink_signal.connect(app.onBlink, Qt.QueuedConnection)
 
 
 hotkey_thread.start()
