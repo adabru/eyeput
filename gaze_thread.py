@@ -12,9 +12,9 @@ gaze_filter = GazeFilter()
 blink_filter = BlinkFilter()
 
 # for debugging
-from graph import *
+# from graph import *
 
-graph = Graph()
+# graph = Graph()
 
 
 class GazeThread(QThread):
@@ -24,7 +24,7 @@ class GazeThread(QThread):
     def __init__(self):
         super().__init__()
         # for debugging
-        graph.setup()
+        # graph.setup()
 
     def run(self):
         sock_gaze.listen()
@@ -41,9 +41,12 @@ class GazeThread(QThread):
                     blink = blink_filter.transform(t, l0, l1, r0, r1)
                     self.gaze_signal.emit(x, y)
                     if any(blink):
-                        print(blink)
-                    #     self.blink_signal.emit(*blink)
-                    graph.gaze_signal.emit(t, l0, l1, r0, r1, x, y)
+                        # print(blink)
+                        self.blink_signal.emit(*blink)
+                    # graph.gaze_signal.emit(t, l0, l1, r0, r1, x, y)
+
+            except ValueError as err:
+                print(err)
 
             except RuntimeError as err:
                 print(err)
