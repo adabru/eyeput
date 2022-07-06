@@ -9,19 +9,14 @@ pip install PyQt5 pynput numpy
 pip install pyqtgraph pyopengl
 
 # https://github.com/boppreh/keyboard
-sudo pip install git+https://github.com/boppreh/keyboard.git
-# sudo pip uninstall keyboard
+pip install git+https://github.com/boppreh/keyboard.git
+# pip uninstall keyboard
 
 # add to global path for hotkey configuration
 sudo ln -s $PWD/eyeput.sh /usr/local/bin/eyeput
 
 # use your xkb layout as default console keymap
 sudo sh -c "echo KEYMAP=de-latin1 > /etc/vconsole.conf"
-
-# enable start on system start
-sudo sed "s|__PWD__|$PWD|" ./eyeput.keys.service | sudo tee /etc/systemd/system/eyeput.keys.service
-sudo systemctl enable --now eyeput.keys
-journalctl -eu eyeput.keys
 ```
 
 Add a hotkey in your window manager with the command: `eyeput toggle`.
@@ -31,7 +26,6 @@ TODO
 - scroll, mouse move
 - unicode symbols
 - special clicks: double, etc.
-- eye blinking for clicking?
 
 KNOWN ISSUES:
 

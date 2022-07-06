@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 
-import sys, signal, subprocess
-from time import time
+import sys, signal, subprocess, time
 
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QHBoxLayout
 from PyQt5.QtCore import QObject, pyqtSlot, Qt, QTimer, QRectF, QPoint, QPointF
 from PyQt5.QtGui import QFont, QColor, QPainter, QPixmap
 from pynput.mouse import Button, Controller
+import keyboard
 
 from tiles import *
 from command_label import CommandLabel as CommandLabel
@@ -18,8 +18,6 @@ from activation import *
 from gaze_pointer import GazePointer
 
 mouse = Controller()
-
-sock_keypress = UnixSocket(Sockets.keypress, 100)
 
 # is set in App`s constructor
 screenGeometry = None
@@ -213,7 +211,7 @@ class App(QObject):
         elif self.hoverItem.id == "click":
             self.clickTimer.setInterval(int(Times.click * 1000))
             self.clickTimer.start()
-            self.mouseMoveTime = time()
+            self.mouseMoveTime = time.time()
             self.gridState.hold = False
             self.activation.go_idle()
 
@@ -260,10 +258,10 @@ class App(QObject):
         dist = rel2abs(self.currPos - self.lastPos).manhattanLength()
 
         if dist > 10:
-            self.mouseMoveTime = time()
+            self.mouseMoveTime = time.time()
             log_debug("mouse moved: " + str(dist))
 
-        elif time() - self.mouseMoveTime > Times.mouse_movement:
+        elif time.time() - self.mouseMoveTime > Times.mouse_movement:
             log_debug("mouse click")
             pos = rel2abs(self.currPos)
             oldPos = mouse.position
@@ -278,7 +276,12 @@ class App(QObject):
 
     def pressKey(self, keyCode):
         if activate_keypress:
-            sock_keypress.try_send("+".join(list(self.gridState.modifiers) + [keyCode]))
+            # activate keyboard
+            keyboard.press_and_release("shift")
+            time.sleep(0.02)
+            keyboard.press_and_release(
+                "+".join(list(self.gridState.modifiers) + [keyCode])
+            )
         else:
             print("WARN: keypresses are deactivated in settings!")
         self.gridState.modifiers.clear()
