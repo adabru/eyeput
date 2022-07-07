@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from statistics import mode
 import sys, signal, time
 
 from PyQt5.QtWidgets import QApplication, QWidget
@@ -8,14 +9,18 @@ from PyQt5.QtCore import QObject, pyqtSlot, Qt, QTimer, QPoint, QPointF
 from settings import *
 from hotkey_thread import HotḱeyThread
 from gaze_thread import GazeThread
+from gaze_filter import *
 from activation import *
 from gaze_pointer import GazePointer
 from label_grid import *
+from status import *
 import external
 from tiles import *
 
 # is set in App`s constructor
 screen_geometry = None
+
+gaze_filter = GazeFilter()
 
 
 def rel2abs(point):
@@ -28,8 +33,11 @@ def rel2abs(point):
 class App(QObject):
     widget = None
     grid_widget = None
+    status_widget = None
     gaze_pointer = None
+
     activation = GridActivation()
+    mode = Modes.enabled
 
     click_timer = None
     currPos = QPointF(0, 0)
@@ -66,20 +74,28 @@ class App(QObject):
         self.grid_widget.hide()
         self.grid_widget.action_signal.connect(self.grid_action)
 
+        self.status_widget = Status(self.widget, self.mode)
+
         self.gaze_pointer = GazePointer(self.widget)
 
         self.widget.setWindowTitle("eyeput")
         self.widget.show()
 
-    @pyqtSlot(bool, bool)
-    def onBlink(self, l, r):
+    def on_blink(self, l, r):
         if l and not r:
             external.left_click()
         elif not l and r:
             external.right_click()
 
-    @pyqtSlot(float, float)
-    def onGaze(self, x, y):
+    @pyqtSlot(float, float, float, float, float)
+    def on_gaze(self, t, l0, l1, r0, r1):
+        [x, y, l_blink, r_blink, l_variance, r_variance] = gaze_filter.transform(
+            t, l0, l1, r0, r1
+        )
+
+        self.on_blink(l_blink, r_blink)
+        self.status_widget.on_gaze(l_variance, r_variance)
+
         self.currPos = QPointF(x, y)
         self.activation.update_gaze(x, y)
         if self.activation.state == GridActivationState.SELECTING:
@@ -141,8 +157,7 @@ hotkey_thread = HotḱeyThread()
 hotkey_thread.hotkey_signal.connect(app.onHotkeyPressed, Qt.QueuedConnection)
 
 gaze_thread = GazeThread()
-gaze_thread.gaze_signal.connect(app.onGaze, Qt.QueuedConnection)
-gaze_thread.blink_signal.connect(app.onBlink, Qt.QueuedConnection)
+gaze_thread.gaze_signal.connect(app.on_gaze, Qt.QueuedConnection)
 
 hotkey_thread.start()
 gaze_thread.start()

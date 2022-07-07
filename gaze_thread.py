@@ -5,11 +5,8 @@ from PyQt5.QtCore import (
 
 from unix_socket import UnixSocket
 from settings import *
-from dsp import *
 
 sock_gaze = UnixSocket(Sockets.gaze, 100)
-gaze_filter = GazeFilter()
-blink_filter = BlinkFilter()
 
 # for debugging
 # from graph import *
@@ -18,8 +15,7 @@ blink_filter = BlinkFilter()
 
 
 class GazeThread(QThread):
-    gaze_signal = pyqtSignal(float, float)
-    blink_signal = pyqtSignal(bool, bool)
+    gaze_signal = pyqtSignal(float, float, float, float, float)
 
     def __init__(self):
         super().__init__()
@@ -37,12 +33,7 @@ class GazeThread(QThread):
                 while True:
                     gaze_frame = sock_gaze.receive()
                     [t, l0, l1, r0, r1] = [float(x) for x in gaze_frame.split(" ")]
-                    [x, y] = gaze_filter.transform(t, l0, l1, r0, r1)
-                    blink = blink_filter.transform(t, l0, l1, r0, r1)
-                    self.gaze_signal.emit(x, y)
-                    if any(blink):
-                        print(blink)
-                        # self.blink_signal.emit(*blink)
+                    self.gaze_signal.emit(t, l0, l1, r0, r1)
                     # graph.gaze_signal.emit(t, l0, l1, r0, r1, x, y)
 
             except ValueError as err:

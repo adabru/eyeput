@@ -18,7 +18,6 @@ modifierColors = {
 
 class Sockets:
     gaze = "/tmp/gaze_input.sock"
-    keypress = "/tmp/evdev_keypress.sock"
     eyeput = "/tmp/eyeput.fifo"
 
 
@@ -37,6 +36,15 @@ class Colors:
     circle_activated = QColor(255, 80, 80, 150)
     circle_toggled = QColor(80, 80, 255, 150)
     modifierBorder = QColor(168, 34, 3, 50)
+    eye_border = QColor(0, 0, 0, 255)
+    eye_closed = QColor(0, 0, 0, 80)
+    eye_flickering = QColor(255, 0, 0, 150)
+    eye_opened = QColor(0, 255, 0, 150)
+
+
+class Modes:
+    disabled = "disabled"
+    enabled = "enabled"
 
 
 class Times:
