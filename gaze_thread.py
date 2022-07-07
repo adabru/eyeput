@@ -41,8 +41,8 @@ class GazeThread(QThread):
                     blink = blink_filter.transform(t, l0, l1, r0, r1)
                     self.gaze_signal.emit(x, y)
                     if any(blink):
-                        # print(blink)
-                        self.blink_signal.emit(*blink)
+                        print(blink)
+                        # self.blink_signal.emit(*blink)
                     # graph.gaze_signal.emit(t, l0, l1, r0, r1, x, y)
 
             except ValueError as err:

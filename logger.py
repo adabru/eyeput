@@ -9,6 +9,7 @@ class LogLvl(Enum):
 
 
 logLevel = LogLvl.INFO
+# logLevel = LogLvl.DEBUG
 
 
 def log_info(s):

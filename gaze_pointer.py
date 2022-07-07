@@ -16,6 +16,10 @@ class GazePointer(QWidget):
         self.pixmap = QPixmap(f"{os.path.dirname(__file__)}/resources/gazePointer.png")
         self.setGeometry(0, 0, self.pixmap.width(), self.pixmap.height())
 
+    def on_gaze(self, position):
+        if self.isVisible():
+            self.move(position)
+
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.drawPixmap(

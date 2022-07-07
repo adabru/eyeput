@@ -11,6 +11,15 @@ class InternalAction:
         self.img = img
 
 
+class OtherAction:
+    def __init__(self, label, x, y, id, img=None):
+        self.label = label
+        self.x = x
+        self.y = y
+        self.img = img
+        self.id = id
+
+
 class KeyAction:
     def __init__(self, label, x, y, pressKey=None, img=None):
         self.label = label
@@ -90,7 +99,7 @@ tiles = {
         "X": KeyAction("X", 10, 3, "shift+x"),
         "Y": KeyAction("Y", 11, 3, "shift+y"),
         "Z": KeyAction("Z", 12, 3, "shift+z"),
-        "click": InternalAction("🖰", 13, 3),
+        "click": OtherAction("🖰", 13, 3, "left_click"),
         # row 4
         "left": KeyAction("⏴", 0, 4, "left"),
         "right": KeyAction("⏵", 1, 4, "right"),

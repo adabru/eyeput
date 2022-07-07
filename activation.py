@@ -69,7 +69,6 @@ class GridActivation(QObject):
         self._trigger()
 
     def _trigger(self, area=None):
-        """..."""
         self.activate_grid_signal.emit(area and area.target)
 
     def go_idle(self):
