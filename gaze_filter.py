@@ -6,69 +6,80 @@ import numpy as np
 from settings import *
 
 
-# registers a blink if eye was shortly invalid and revalidated
+# recognize blink patterns
+# closing and opening brackets from both eyes are synchronized, limited by the latency
+# available patterns:
+#
+#        1    2    3    5    5    3    6    3
+# left  ███       ▒█▒  ▒██  ███  ██▒  ▒██████▒
+# right      ███  ▒█▒  ▒███████████▒  ▒██  ██▒
+#
+# a blink is only recognized on every closing bracket; it doesn't matter whether the eye starts closed or opened
 class BlinkFilter:
-    l_block = 0
-    r_block = 0
+    def __init__(self, latency):
+        self.latency = latency
 
-    def check_blink(self, buffer, max_closed, max_opened):
-        from_behind = reversed(buffer)
-        # eye must be opened
-        if not next(from_behind).any():
-            return 0
-        # but only for a short time
-        n_opened = 1
-        while next(from_behind).any():
-            n_opened += 1
-            if n_opened > max_opened:
-                return 0
-        # before that it mustn't be closed long
-        n_closed = 1
-        while not next(from_behind).any():
-            n_closed += 1
-            if n_closed > max_closed:
-                return 0
-        return n_opened
+    flips = []
+    last_flip = 0
+    opened = {1: True, 2: True}
 
-    def is_closed(self, buffer):
-        return not buffer[-1].any()
+    def check_flip(self, t, buffer, eye):
+        opened = buffer[-1].any()
+        # a little debounce
+        if (
+            opened != self.opened[eye]
+            and buffer[-2].any() == opened
+            and buffer[-3].any() == opened
+        ):
+            self.opened[eye] = opened
+            self.flips.append(eye)
+            self.last_flip = t[-1]
 
     def transform(self, t, left, right):
-        self.l_block = max(self.l_block - 1, 0)
-        self.r_block = max(self.r_block - 1, 0)
-        # check if both eyes blinked
-        if (
-            not self.l_block
-            and self.check_blink(left, 25, 5) > 0
-            and not self.r_block
-            and self.check_blink(right, 25, 5) > 0
-        ):
-            self.l_block = 19
-            self.r_block = 19
-            return [True, True]
-        elif (
-            not self.l_block
-            and self.check_blink(left, 20, 5) == 5
-            and not self.is_closed(right)
-        ):
-            self.l_block = 19
-            return [True, False]
-        elif (
-            not self.r_block
-            and self.check_blink(right, 20, 5) == 5
-            and not self.is_closed(left)
-        ):
-            self.r_block = 19
-            return [False, True]
-        else:
-            return [False, False]
+        # recognize flip
+        self.check_flip(t, left, 1)
+        self.check_flip(t, right, 2)
+        # process flips and emit
+        blinks = []
+        if len(self.flips) and t[-1] - self.last_flip > self.latency:
+            l = r = False
+            n = len(self.flips)
+            i = 0
+            while i < n:
+                # left eye
+                if self.flips[i] == 1:
+                    # closing bracket, synchronize
+                    if l and r and i + 1 < n and self.flips[i + 1] == 2:
+                        blinks.append(3)
+                        r = False
+                        i += 1
+                    # closing bracket, without right
+                    elif l and not r:
+                        blinks.append(1)
+                    # closing bracket, with right
+                    elif l and r:
+                        blinks.append(5)
+                    l = not l
+                # right eye
+                elif self.flips[i] == 2:
+                    if r and l and i + 1 < n and self.flips[i + 1] == 1:
+                        blinks.append(3)
+                        l = False
+                        i += 1
+                    elif r and not l:
+                        blinks.append(2)
+                    elif r and l:
+                        blinks.append(6)
+                    r = not r
+                i += 1
+            blinks.append(self.opened[1] * 1 + self.opened[2] * 2)
+            self.flips = []
+        return blinks
         # todo: variance filters closing eyelid
 
 
+# assume measurements are distributed in a circle
 class PointerFilter:
-
-    # assume measurements are distributed in a circle
-
     def __init__(self, radius, lookbehind):
         self.radius = radius
         self.lookbehind = lookbehind
@@ -158,7 +169,7 @@ class GazeFilter:
     right = deque([np.array((0.0, 0.0))] * 50, 50)
 
     pointer_filter = PointerFilter(np.array((0.02, 0.02)), 20)
-    blink_filter = BlinkFilter()
+    blink_filter = BlinkFilter(0.22)
     flicker_filter = FlickerFilter(0.7 * np.array((0.02, 0.02)), 5)
     # flicker_filter = VarianceFilter(5, 0.02)
 
@@ -170,13 +181,12 @@ class GazeFilter:
         self.right.append(np.array((r0, r1)))
         right = self.right
         [x, y] = self.pointer_filter.transform(t, left, right)
-        [l_blink, r_blink] = self.blink_filter.transform(t, left, right)
         [l_variance, r_variance] = self.flicker_filter.transform(t, left, right)
+        blink = self.blink_filter.transform(t, left, right)
         # import timeit
         # _time = lambda n, f: print(timeit.timeit(f, number=n))
         # _time(3000, lambda: self.t.append(t[-1]))
         # _time(1000, lambda: self.pointer_filter.transform(t, left, right))
         # _time(1000, lambda: self.blink_filter.transform(t, left, right))
         # _time(1000, lambda: self.flicker_filter.transform(t, left, right))
-        # print(x, y, l_blink, r_blink, l_variance, r_variance)
-        return [x, y, l_blink, r_blink, l_variance, r_variance]
+        return [x, y, blink, l_variance, r_variance]

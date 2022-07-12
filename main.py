@@ -17,6 +17,9 @@ from status import *
 import external
 from tiles import *
 
+from graph import *
+
+
 # is set in App`s constructor
 screen_geometry = None
 
@@ -81,6 +84,9 @@ class App(QObject):
         self.widget.setWindowTitle("eyeput")
         self.widget.show()
 
+        # self.graph = Graph()
+        # self.graph.setup()
+
     def on_blink(self, l, r):
         if l and not r:
             external.left_click()
@@ -89,11 +95,11 @@ class App(QObject):
 
     @pyqtSlot(float, float, float, float, float)
     def on_gaze(self, t, l0, l1, r0, r1):
-        [x, y, l_blink, r_blink, l_variance, r_variance] = gaze_filter.transform(
-            t, l0, l1, r0, r1
-        )
+        [x, y, blink, l_variance, r_variance] = gaze_filter.transform(t, l0, l1, r0, r1)
 
-        self.on_blink(l_blink, r_blink)
+        # self.graph.addPoint(t, l0, l1, r0, r1, x, y)
+
+        # self.on_blink(l_blink, r_blink)
         self.status_widget.on_gaze(l_variance, r_variance)
 
         self.currPos = QPointF(x, y)
