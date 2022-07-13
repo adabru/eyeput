@@ -173,20 +173,26 @@ class GazeFilter:
     flicker_filter = FlickerFilter(0.7 * np.array((0.02, 0.02)), 5)
     # flicker_filter = VarianceFilter(5, 0.02)
 
-    def transform(self, t, l0, l1, r0, r1):
+    def transform(self, t, l0, l1, r0, r1, position=True, blink=True, variance=True):
         self.t.append(t)
         t = self.t
         self.left.append(np.array((l0, l1)))
         left = self.left
         self.right.append(np.array((r0, r1)))
         right = self.right
-        [x, y] = self.pointer_filter.transform(t, left, right)
-        [l_variance, r_variance] = self.flicker_filter.transform(t, left, right)
-        blink = self.blink_filter.transform(t, left, right)
+        [x, y] = left[-1]
+        if position:
+            [x, y] = self.pointer_filter.transform(t, left, right)
+        [l_variance, r_variance] = [1, 1]
+        if variance:
+            [l_variance, r_variance] = self.flicker_filter.transform(t, left, right)
+        b = []
+        if blink:
+            b = self.blink_filter.transform(t, left, right)
         # import timeit
         # _time = lambda n, f: print(timeit.timeit(f, number=n))
         # _time(3000, lambda: self.t.append(t[-1]))
         # _time(1000, lambda: self.pointer_filter.transform(t, left, right))
         # _time(1000, lambda: self.blink_filter.transform(t, left, right))
         # _time(1000, lambda: self.flicker_filter.transform(t, left, right))
-        return [x, y, blink, l_variance, r_variance]
+        return [x, y, b, l_variance, r_variance]

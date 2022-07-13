@@ -1,8 +1,8 @@
-import os.path
+import psutil
 
 from PyQt5.QtWidgets import QLabel, QWidget
 from PyQt5.QtGui import QFont, QColor, QPainter, QPixmap
-from PyQt5.QtCore import Qt, QPoint, QRect, QTimer
+from PyQt5.QtCore import Qt, QPoint, QRect, QTimer, pyqtSlot
 
 from settings import *
 
@@ -13,9 +13,22 @@ class Status(QWidget):
         self.setGeometry(QRect(5, 5, 100, 50))
         self.mode = mode
         self.eyes = (0, 0)
+        self.stats = ""
+        # https://psutil.readthedocs.io/en/latest/#process-class
+        self.current_process = psutil.Process()
+
+        self.stats_timer = QTimer(self)
+        self.stats_timer.timeout.connect(self.update_stats)
+        self.stats_timer.setInterval(500)
+        self.stats_timer.start()
 
     def _lerp(self, x, y, a):
         return int(a * y + (1 - a) * x)
+
+    @pyqtSlot()
+    def update_stats(self):
+        self.update()
+        self.stats = "{:.0f}%".format(self.current_process.cpu_percent())
 
     def _get_color(self, variance):
         if variance == 0:
@@ -79,4 +92,14 @@ class Status(QWidget):
             QRect(0, 0, 45, 20),
             Qt.AlignCenter,
             self.mode,
+        )
+
+        # draw stats
+        fontSize = 8
+        painter.setFont(QFont("Arial", fontSize))
+        painter.setPen(Colors.text)
+        painter.drawText(
+            QRect(0, 10, 45, 20),
+            Qt.AlignCenter,
+            self.stats,
         )

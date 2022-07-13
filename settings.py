@@ -44,6 +44,7 @@ class Colors:
 
 class Modes:
     disabled = "disabled"
+    paused = "paused"
     enabled = "enabled"
 
 

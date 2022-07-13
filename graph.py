@@ -1,4 +1,6 @@
-import os.path
+# https://pyqtgraph.readthedocs.io/en/latest/graphicsItems/index.html
+# python -m pyqtgraph.examples
+
 
 import numpy as np
 import pyqtgraph as pg

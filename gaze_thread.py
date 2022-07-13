@@ -1,7 +1,4 @@
-from PyQt5.QtCore import (
-    pyqtSignal,
-    QThread,
-)
+from PyQt5.QtCore import pyqtSignal, QThread, QMutex
 
 from unix_socket import UnixSocket
 from settings import *
@@ -17,8 +14,10 @@ sock_gaze = UnixSocket(Sockets.gaze, 100)
 class GazeThread(QThread):
     gaze_signal = pyqtSignal(float, float, float, float, float)
 
-    def __init__(self):
+    def __init__(self, pause_lock):
         super().__init__()
+        self.pause_lock = pause_lock
+
         # for debugging
         # graph.setup()
 
@@ -31,6 +30,8 @@ class GazeThread(QThread):
             try:
                 # Receive the data in small chunks and retransmit it
                 while True:
+                    self.pause_lock.lock()
+                    self.pause_lock.unlock()
                     gaze_frame = sock_gaze.receive()
                     [t, l0, l1, r0, r1] = [float(x) for x in gaze_frame.split(" ")]
                     self.gaze_signal.emit(t, l0, l1, r0, r1)

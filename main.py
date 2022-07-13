@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 
-from statistics import mode
 import sys, signal, time
 
 from PyQt5.QtWidgets import QApplication, QWidget
-from PyQt5.QtCore import QObject, pyqtSlot, Qt, QTimer, QPoint, QPointF
+from PyQt5.QtCore import QObject, pyqtSlot, Qt, QTimer, QPoint, QPointF, QMutex
 
 from settings import *
 from hotkey_thread import HotḱeyThread
@@ -41,6 +40,7 @@ class App(QObject):
 
     activation = GridActivation()
     mode = Modes.enabled
+    pause_lock = QMutex()
 
     click_timer = None
     currPos = QPointF(0, 0)
@@ -87,26 +87,39 @@ class App(QObject):
         # self.graph = Graph()
         # self.graph.setup()
 
-    def on_blink(self, l, r):
-        if l and not r:
-            external.left_click()
-        elif not l and r:
-            external.right_click()
+    def on_blink(self, blink):
+        if blink == [5, 3, 3]:
+            if self.mode == Modes.enabled:
+                self.mode = Modes.paused
+                # self.pause_lock.lock()
+            else:
+                self.mode = Modes.enabled
+                # self.pause_lock.unlock()
+            self.status_widget.set_mode(self.mode)
+        # if l and not r:
+        #     external.left_click()
+        # elif not l and r:
+        #     external.right_click()
 
     @pyqtSlot(float, float, float, float, float)
     def on_gaze(self, t, l0, l1, r0, r1):
-        [x, y, blink, l_variance, r_variance] = gaze_filter.transform(t, l0, l1, r0, r1)
-
-        # self.graph.addPoint(t, l0, l1, r0, r1, x, y)
-
-        # self.on_blink(l_blink, r_blink)
-        self.status_widget.on_gaze(l_variance, r_variance)
-
-        self.currPos = QPointF(x, y)
-        self.activation.update_gaze(x, y)
-        if self.activation.state == GridActivationState.SELECTING:
-            self.grid_widget.on_gaze(x, y)
-        self.gaze_pointer.on_gaze(rel2abs(self.currPos))
+        if self.mode == Modes.enabled:
+            [x, y, blink, l_variance, r_variance] = gaze_filter.transform(
+                t, l0, l1, r0, r1
+            )
+            # self.graph.addPoint(t, l0, l1, r0, r1, x, y)
+            self.on_blink(blink)
+            self.status_widget.on_gaze(l_variance, r_variance)
+            self.currPos = QPointF(x, y)
+            self.activation.update_gaze(x, y)
+            if self.activation.state == GridActivationState.SELECTING:
+                self.grid_widget.on_gaze(x, y)
+            self.gaze_pointer.on_gaze(rel2abs(self.currPos))
+        if self.mode == Modes.paused:
+            [_, _, blink, _, _] = gaze_filter.transform(
+                t, l0, l1, r0, r1, position=False, variance=False
+            )
+            self.on_blink(blink)
 
     @pyqtSlot()
     def onHotkeyPressed(self):
@@ -162,7 +175,7 @@ signal.signal(signal.SIGINT, signal.SIG_DFL)
 hotkey_thread = HotḱeyThread()
 hotkey_thread.hotkey_signal.connect(app.onHotkeyPressed, Qt.QueuedConnection)
 
-gaze_thread = GazeThread()
+gaze_thread = GazeThread(app.pause_lock)
 gaze_thread.gaze_signal.connect(app.on_gaze, Qt.QueuedConnection)
 
 hotkey_thread.start()
