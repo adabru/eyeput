@@ -1,7 +1,10 @@
 import subprocess
 import time
 
+# https://github.com/moses-palmer/pynput
 from pynput.mouse import Button, Controller
+
+# https://github.com/boppreh/keyboard
 import keyboard
 
 from settings import *
@@ -21,6 +24,10 @@ def left_click(position=None):
 
 def right_click():
     mouse.click(Button.right, 1)
+
+
+def scroll(amount):
+    mouse.scroll(0, amount)
 
 
 def press_key(keycode):

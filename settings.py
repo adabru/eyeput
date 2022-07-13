@@ -8,6 +8,7 @@ activate_keypress = True
 # The gaze may flicker. This is the threshold to acknowledge a border crossing between two areas.
 border_threshold = QMarginsF(0.015, 0.015, 0.015, 0.015)
 
+
 modifierColors = {
     "win": QColor(0x61A0AF),
     "alt": QColor(0x96C9DC),
@@ -46,6 +47,7 @@ class Modes:
     disabled = "disabled"
     paused = "paused"
     enabled = "enabled"
+    scrolling = "scrolling"
 
 
 class Times:
@@ -59,3 +61,5 @@ class Times:
     click = 0.05
     # Blink time of a selected element
     selection_feedback = 0.1
+    # Continuous scrolling
+    scroll_interval = 0.05

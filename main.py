@@ -43,6 +43,7 @@ class App(QObject):
     pause_lock = QMutex()
 
     click_timer = None
+    scroll_timer = None
     currPos = QPointF(0, 0)
     lastPos = QPointF(0, 0)
     counter = 0
@@ -55,6 +56,9 @@ class App(QObject):
 
         self.click_timer = QTimer(self)
         self.click_timer.timeout.connect(self.processMouse)
+        self.scroll_timer = QTimer(self)
+        self.scroll_timer.setInterval(int(Times.scroll_interval * 1000))
+        self.scroll_timer.timeout.connect(self.scroll_step)
 
         self.activation.activate_grid_signal.connect(self.activation_changed)
 
@@ -87,15 +91,33 @@ class App(QObject):
         # self.graph = Graph()
         # self.graph.setup()
 
+    def set_mode(self, mode):
+        self.mode = mode
+        self.status_widget.set_mode(self.mode)
+        self.scroll_timer.stop()
+
     def on_blink(self, blink):
+        if not blink:
+            return
         if blink == [5, 3, 3]:
             if self.mode == Modes.enabled:
-                self.mode = Modes.paused
-                # self.pause_lock.lock()
+                self.set_mode(Modes.paused)
+            elif self.mode == Modes.paused:
+                self.set_mode(Modes.enabled)
+        elif blink == [2, 1, 3]:
+            if self.mode == Modes.enabled:
+                self.set_mode(Modes.scrolling)
+            elif self.mode == Modes.scrolling:
+                self.set_mode(Modes.enabled)
+        elif self.mode == Modes.scrolling:
+            if blink[-1] == 1:
+                self.scroll_direction = 1
+                self.scroll_timer.start()
+            elif blink[-1] == 2:
+                self.scroll_direction = -1
+                self.scroll_timer.start()
             else:
-                self.mode = Modes.enabled
-                # self.pause_lock.unlock()
-            self.status_widget.set_mode(self.mode)
+                self.scroll_timer.stop()
         # if l and not r:
         #     external.left_click()
         # elif not l and r:
@@ -115,7 +137,12 @@ class App(QObject):
             if self.activation.state == GridActivationState.SELECTING:
                 self.grid_widget.on_gaze(x, y)
             self.gaze_pointer.on_gaze(rel2abs(self.currPos))
-        if self.mode == Modes.paused:
+        elif self.mode == Modes.paused:
+            [_, _, blink, _, _] = gaze_filter.transform(
+                t, l0, l1, r0, r1, position=False, variance=False
+            )
+            self.on_blink(blink)
+        elif self.mode == Modes.scrolling:
             [_, _, blink, _, _] = gaze_filter.transform(
                 t, l0, l1, r0, r1, position=False, variance=False
             )
@@ -146,6 +173,10 @@ class App(QObject):
 
         if hide:
             self.activation.go_idle()
+
+    @pyqtSlot()
+    def scroll_step(self):
+        external.scroll(self.scroll_direction)
 
     @pyqtSlot()
     def processMouse(self):

@@ -3,7 +3,7 @@ from PyQt5.QtCore import pyqtSignal, QThread, QMutex
 from unix_socket import UnixSocket
 from settings import *
 
-sock_gaze = UnixSocket(Sockets.gaze, 100)
+sock_gaze = UnixSocket(Sockets.gaze, 150)
 
 # for debugging
 # from graph import *
