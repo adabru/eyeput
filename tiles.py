@@ -2,6 +2,8 @@ import os.path
 
 from PyQt5.QtCore import QRectF
 
+from settings import *
+
 
 class InternalAction:
     def __init__(self, label, x, y, img=None):
@@ -9,6 +11,15 @@ class InternalAction:
         self.x = x
         self.y = y
         self.img = img
+
+
+class MouseAction:
+    def __init__(self, label, x, y, id, img=None):
+        self.label = label
+        self.x = x
+        self.y = y
+        self.img = img
+        self.id = id
 
 
 class OtherAction:
@@ -99,7 +110,7 @@ tiles = {
         "X": KeyAction("X", 10, 3, "shift+x"),
         "Y": KeyAction("Y", 11, 3, "shift+y"),
         "Z": KeyAction("Z", 12, 3, "shift+z"),
-        "click": OtherAction("🖰", 13, 3, "left_click"),
+        "click": MouseAction("🖰", 13, 3, "left_click_delayed"),
         # row 4
         "left": KeyAction("⏴", 0, 4, "left"),
         "right": KeyAction("⏵", 1, 4, "right"),
@@ -250,5 +261,24 @@ tiles = {
             "xdg-open https://github.com/adabru &",
             img="invalid path",
         ),
+    },
+}
+
+blink_commands = {
+    Modes.enabled: {
+        ". l .": "mode_paused",
+        ".l.r.": "mode_scrolling",
+    },
+    Modes.paused: {
+        ". l .": "mode_enabled",
+        ".l.r.": "mode_scrolling",
+    },
+    Modes.scrolling: {
+        ". l .": "mode_paused",
+        ". r .": "mode_enabled",
+        "l": "scroll_up",
+        "r": "scroll_down",
+        " ": "scroll_stop",
+        ".": "scroll_stop",
     },
 }

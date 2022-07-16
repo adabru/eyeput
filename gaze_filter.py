@@ -8,73 +8,87 @@ from settings import *
 
 # recognize blink patterns
 # closing and opening brackets from both eyes are synchronized, limited by the latency
-# available patterns:
+# available patterns, e.g:
 #
-#        1    2    3    5    5    3    6    3
-# left  ███       ▒█▒  ▒██  ███  ██▒  ▒██████▒
-# right      ███  ▒█▒  ▒███████████▒  ▒██  ██▒
+#      ".r." ".l." ". ."   ". r r ."    ". l ."
+# left  ███         ▒█▒  ▒██  ███  ██▒  ▒██████▒
+# right       ███   ▒█▒  ▒███████████▒  ▒██  ██▒
 #
 # a blink is only recognized on every closing bracket; it doesn't matter whether the eye starts closed or opened
+#
+# defining a limited set of available patterns reduces latency
 class BlinkFilter:
-    def __init__(self, latency):
+    def __init__(self, latency, sync_latency):
         self.latency = latency
+        self.sync_latency = sync_latency
 
-    flips = []
-    last_flip = 0
-    opened = {1: True, 2: True}
+    flips = "."
+    last_flip_time = 0
+    prefix_tree = {}
+
+    def decode(self, pattern):
+        return {
+            ".": {"l": True, "r": True},
+            "l": {"l": True, "r": False},
+            "r": {"l": False, "r": True},
+            " ": {"l": False, "r": False},
+        }[pattern]
+
+    def encode(self, pair):
+        return {
+            (True, True): ".",
+            (True, False): "l",
+            (False, True): "r",
+            (False, False): " ",
+        }[(pair["l"], pair["r"])]
+
+    def set_blink_patterns(self, blink_patterns):
+        # build prefix tree
+        self.prefix_tree = {}
+        for p in blink_patterns:
+            for i in range(1, len(p) + 1):
+                if not p[:i] in self.prefix_tree:
+                    self.prefix_tree[p[:i]] = {p}
+                else:
+                    self.prefix_tree[p[:i]].add(p)
 
     def check_flip(self, t, buffer, eye):
+        current_flip = self.decode(self.flips[-1])
         opened = buffer[-1].any()
         # a little debounce
-        if (
-            opened != self.opened[eye]
-            and buffer[-2].any() == opened
-            and buffer[-3].any() == opened
-        ):
-            self.opened[eye] = opened
-            self.flips.append(eye)
-            self.last_flip = t[-1]
+        if opened != current_flip[eye] and buffer[-2].any() == opened:
+            current_flip[eye] = opened
+            # sync both eyes
+            if (
+                len(self.flips) >= 2
+                and t[-2] - self.last_flip_time < self.sync_latency
+                and self.decode(self.flips[-2])[eye] != current_flip[eye]
+            ):
+                self.flips = self.flips[:-1] + self.encode(current_flip)
+            else:
+                self.flips += self.encode(current_flip)
+            self.last_flip_time = t[-2]
 
     def transform(self, t, left, right):
         # recognize flip
-        self.check_flip(t, left, 1)
-        self.check_flip(t, right, 2)
-        # process flips and emit
-        blinks = []
-        if len(self.flips) and t[-1] - self.last_flip > self.latency:
-            l = r = False
-            n = len(self.flips)
-            i = 0
-            while i < n:
-                # left eye
-                if self.flips[i] == 1:
-                    # closing bracket, synchronize
-                    if l and r and i + 1 < n and self.flips[i + 1] == 2:
-                        blinks.append(3)
-                        r = False
-                        i += 1
-                    # closing bracket, without right
-                    elif l and not r:
-                        blinks.append(1)
-                    # closing bracket, with right
-                    elif l and r:
-                        blinks.append(5)
-                    l = not l
-                # right eye
-                elif self.flips[i] == 2:
-                    if r and l and i + 1 < n and self.flips[i + 1] == 1:
-                        blinks.append(3)
-                        l = False
-                        i += 1
-                    elif r and not l:
-                        blinks.append(2)
-                    elif r and l:
-                        blinks.append(6)
-                    r = not r
-                i += 1
-            blinks.append(self.opened[1] * 1 + self.opened[2] * 2)
-            self.flips = []
-        return blinks
+        self.check_flip(t, left, "l")
+        self.check_flip(t, right, "r")
+        dt = t[-1] - self.last_flip_time
+        if dt < self.sync_latency:
+            return ""
+        # emit when reaching leaf or blink latency
+        if (
+            self.flips in self.prefix_tree
+            and self.flips in self.prefix_tree[self.flips]
+            and (dt > self.latency or len(self.prefix_tree[self.flips]) == 1)
+        ):
+            result = self.flips
+            self.flips = self.flips[-1:]
+            return result
+        # preemptively cancel unregistered blink
+        if not self.flips in self.prefix_tree:
+            self.flips = self.flips[-1:]
+        return ""
         # todo: variance filters closing eyelid
 
 
@@ -169,7 +183,7 @@ class GazeFilter:
     right = deque([np.array((0.0, 0.0))] * 50, 50)
 
     pointer_filter = PointerFilter(np.array((0.02, 0.02)), 20)
-    blink_filter = BlinkFilter(0.22)
+    blink_filter = BlinkFilter(0.22, 0.05)
     flicker_filter = FlickerFilter(0.7 * np.array((0.02, 0.02)), 5)
     # flicker_filter = VarianceFilter(5, 0.02)
 
@@ -183,12 +197,13 @@ class GazeFilter:
         [x, y] = left[-1]
         if position:
             [x, y] = self.pointer_filter.transform(t, left, right)
-        [l_variance, r_variance] = [1, 1]
+        [l_variance, r_variance] = [1 * (l0), 1]
         if variance:
             [l_variance, r_variance] = self.flicker_filter.transform(t, left, right)
-        b = []
+        b = ""
         if blink:
             b = self.blink_filter.transform(t, left, right)
+
         # import timeit
         # _time = lambda n, f: print(timeit.timeit(f, number=n))
         # _time(3000, lambda: self.t.append(t[-1]))
@@ -196,3 +211,6 @@ class GazeFilter:
         # _time(1000, lambda: self.blink_filter.transform(t, left, right))
         # _time(1000, lambda: self.flicker_filter.transform(t, left, right))
         return [x, y, b, l_variance, r_variance]
+
+    def set_blink_patterns(self, blink_patterns):
+        self.blink_filter.set_blink_patterns(blink_patterns)

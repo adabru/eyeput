@@ -85,6 +85,8 @@ class App(QObject):
 
         self.gaze_pointer = GazePointer(self.widget)
 
+        self.set_mode(Modes.enabled)
+
         self.widget.setWindowTitle("eyeput")
         self.widget.show()
 
@@ -95,29 +97,27 @@ class App(QObject):
         self.mode = mode
         self.status_widget.set_mode(self.mode)
         self.scroll_timer.stop()
+        gaze_filter.set_blink_patterns(blink_commands[self.mode])
 
     def on_blink(self, blink):
         if not blink:
             return
-        if blink == [5, 3, 3]:
-            if self.mode == Modes.enabled:
-                self.set_mode(Modes.paused)
-            elif self.mode == Modes.paused:
-                self.set_mode(Modes.enabled)
-        elif blink == [2, 1, 3]:
-            if self.mode == Modes.enabled:
-                self.set_mode(Modes.scrolling)
-            elif self.mode == Modes.scrolling:
-                self.set_mode(Modes.enabled)
-        elif self.mode == Modes.scrolling:
-            if blink[-1] == 1:
-                self.scroll_direction = 1
-                self.scroll_timer.start()
-            elif blink[-1] == 2:
-                self.scroll_direction = -1
-                self.scroll_timer.start()
-            else:
-                self.scroll_timer.stop()
+        assert blink in blink_commands[self.mode], self.mode + " " + blink
+        id = blink_commands[self.mode][blink]
+        if id == "mode_enabled":
+            self.set_mode(Modes.enabled)
+        elif id == "mode_paused":
+            self.set_mode(Modes.paused)
+        elif id == "mode_scrolling":
+            self.set_mode(Modes.scrolling)
+        elif id == "scroll_up":
+            self.scroll_direction = 1
+            self.scroll_timer.start()
+        elif id == "scroll_down":
+            self.scroll_direction = -1
+            self.scroll_timer.start()
+        elif id == "scroll_stop":
+            self.scroll_timer.stop()
         # if l and not r:
         #     external.left_click()
         # elif not l and r:
@@ -164,7 +164,7 @@ class App(QObject):
         if isinstance(item, KeyAction):
             modifiers = params
             external.press_key("+".join(list(modifiers) + [item.pressKey]))
-        elif isinstance(item, OtherAction) and item.id == "left_click":
+        elif isinstance(item, MouseAction) and item.id == "left_click_delayed":
             self.click_timer.setInterval(int(Times.click * 1000))
             self.click_timer.start()
             self.mouseMoveTime = time.time()

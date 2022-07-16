@@ -13,6 +13,9 @@ sudo ln -s $PWD/eyeput.sh /usr/local/bin/eyeput
 
 # use your xkb layout as default console keymap
 sudo sh -c "echo KEYMAP=de-latin1 > /etc/vconsole.conf"
+
+# allow access to virtual keyboard
+sudo usermod -a -G tty,input $USER
 ```
 
 Add a hotkey in your window manager with the command: `eyeput toggle`.
