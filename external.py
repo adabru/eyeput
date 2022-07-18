@@ -26,6 +26,10 @@ def right_click():
     mouse.click(Button.right, 1)
 
 
+def mouse_move(x, y):
+    mouse.position = (x, y)
+
+
 def scroll(amount):
     mouse.scroll(0, amount)
 

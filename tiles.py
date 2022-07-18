@@ -266,18 +266,26 @@ tiles = {
 
 blink_commands = {
     Modes.enabled: {
-        ". l .": "mode_paused",
-        ".l.r.": "mode_scrolling",
+        ". r .": "mode_paused",
+        ".rl.": "mode_scrolling",
+        # ". .": "mouse_move",
+        ".l": "mouse_start_move",
+        # ".r.": "left_click",
+        # ".l.": "right_click",
+    },
+    Modes.cursor: {
+        ".": "mouse_stop_move",
     },
     Modes.paused: {
         ". l .": "mode_enabled",
         ".l.r.": "mode_scrolling",
+        ".rl.": "mode_scrolling",
     },
     Modes.scrolling: {
-        ". l .": "mode_paused",
-        ". r .": "mode_enabled",
-        "l": "scroll_up",
-        "r": "scroll_down",
+        ". r .": "mode_paused",
+        ". l .": "mode_enabled",
+        ".l": "scroll_up",
+        ".r": "scroll_down",
         " ": "scroll_stop",
         ".": "scroll_stop",
     },

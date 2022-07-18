@@ -23,7 +23,7 @@ class BlinkFilter:
         self.sync_latency = sync_latency
 
     flips = "."
-    last_flip_time = 0
+    flip_times = [0]
     prefix_tree = {}
 
     def decode(self, pattern):
@@ -61,34 +61,39 @@ class BlinkFilter:
             # sync both eyes
             if (
                 len(self.flips) >= 2
-                and t[-2] - self.last_flip_time < self.sync_latency
+                and t[-2] - self.flip_times[-1] < self.sync_latency
                 and self.decode(self.flips[-2])[eye] != current_flip[eye]
             ):
                 self.flips = self.flips[:-1] + self.encode(current_flip)
+                self.flip_times[-1] = t[-2]
             else:
                 self.flips += self.encode(current_flip)
-            self.last_flip_time = t[-2]
+                self.flip_times.append(t[-2])
 
     def transform(self, t, left, right):
         # recognize flip
         self.check_flip(t, left, "l")
         self.check_flip(t, right, "r")
-        dt = t[-1] - self.last_flip_time
+        dt = t[-1] - self.flip_times[-1]
         if dt < self.sync_latency:
-            return ""
+            return (None, None)
         # emit when reaching leaf or blink latency
         if (
             self.flips in self.prefix_tree
             and self.flips in self.prefix_tree[self.flips]
             and (dt > self.latency or len(self.prefix_tree[self.flips]) == 1)
         ):
-            result = self.flips
+            if len(self.flips) == 1:
+                return (self.flips, self.flip_times[0])
+            result = (self.flips, self.flip_times[1])
             self.flips = self.flips[-1:]
+            self.flip_times = self.flip_times[-1:]
             return result
         # preemptively cancel unregistered blink
         if not self.flips in self.prefix_tree:
             self.flips = self.flips[-1:]
-        return ""
+            self.flip_times = self.flip_times[-1:]
+        return (None, None)
         # todo: variance filters closing eyelid
 
 
@@ -181,9 +186,10 @@ class GazeFilter:
     t = deque([0] * 50, 50)
     left = deque([np.array((0.0, 0.0))] * 50, 50)
     right = deque([np.array((0.0, 0.0))] * 50, 50)
+    filtered_position = deque([np.array((0.0, 0.0))] * 50, 50)
 
     pointer_filter = PointerFilter(np.array((0.02, 0.02)), 20)
-    blink_filter = BlinkFilter(0.22, 0.05)
+    blink_filter = BlinkFilter(0.16, 0.04)
     flicker_filter = FlickerFilter(0.7 * np.array((0.02, 0.02)), 5)
     # flicker_filter = VarianceFilter(5, 0.02)
 
@@ -197,12 +203,19 @@ class GazeFilter:
         [x, y] = left[-1]
         if position:
             [x, y] = self.pointer_filter.transform(t, left, right)
+        self.filtered_position.append(np.array((x, y)))
+        filtered_position = self.filtered_position
         [l_variance, r_variance] = [1 * (l0), 1]
         if variance:
             [l_variance, r_variance] = self.flicker_filter.transform(t, left, right)
-        b = ""
+        (flips, flip_position) = (None, None)
         if blink:
-            b = self.blink_filter.transform(t, left, right)
+            (flips, flip_time) = self.blink_filter.transform(t, left, right)
+        if flip_time:
+            for (_t, _position) in zip(reversed(t), reversed(filtered_position)):
+                if _t < flip_time - 0.05:
+                    flip_position = _position
+                    break
 
         # import timeit
         # _time = lambda n, f: print(timeit.timeit(f, number=n))
@@ -210,7 +223,7 @@ class GazeFilter:
         # _time(1000, lambda: self.pointer_filter.transform(t, left, right))
         # _time(1000, lambda: self.blink_filter.transform(t, left, right))
         # _time(1000, lambda: self.flicker_filter.transform(t, left, right))
-        return [x, y, b, l_variance, r_variance]
+        return [x, y, flips, flip_position, l_variance, r_variance]
 
     def set_blink_patterns(self, blink_patterns):
         self.blink_filter.set_blink_patterns(blink_patterns)

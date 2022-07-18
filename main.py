@@ -60,7 +60,7 @@ class App(QObject):
         self.scroll_timer.setInterval(int(Times.scroll_interval * 1000))
         self.scroll_timer.timeout.connect(self.scroll_step)
 
-        self.activation.activate_grid_signal.connect(self.activation_changed)
+        # self.activation.activate_grid_signal.connect(self.activation_changed)
 
         self.widget = QWidget()
         self.widget.setAttribute(Qt.WA_TranslucentBackground, True)
@@ -99,7 +99,7 @@ class App(QObject):
         self.scroll_timer.stop()
         gaze_filter.set_blink_patterns(blink_commands[self.mode])
 
-    def on_blink(self, blink):
+    def on_blink(self, blink, blink_position):
         if not blink:
             return
         assert blink in blink_commands[self.mode], self.mode + " " + blink
@@ -110,6 +110,23 @@ class App(QObject):
             self.set_mode(Modes.paused)
         elif id == "mode_scrolling":
             self.set_mode(Modes.scrolling)
+        elif id == "mouse_move":
+            position = rel2abs(QPointF(blink_position[0], blink_position[1]))
+            external.mouse_move(position.x(), position.y())
+            self.gaze_pointer.on_gaze(position)
+        elif id == "mouse_start_move":
+            position = rel2abs(QPointF(blink_position[0], blink_position[1]))
+            self.gaze_pointer.start_move(position)
+            self.set_mode(Modes.cursor)
+        elif id == "mouse_stop_move":
+            position = rel2abs(QPointF(blink_position[0], blink_position[1]))
+            target_position = self.gaze_pointer.stop_move(position)
+            self.set_mode(Modes.enabled)
+            external.mouse_move(target_position.x(), target_position.y())
+        elif id == "left_click":
+            external.left_click()
+        elif id == "right_click":
+            external.right_click()
         elif id == "scroll_up":
             self.scroll_direction = 1
             self.scroll_timer.start()
@@ -118,35 +135,36 @@ class App(QObject):
             self.scroll_timer.start()
         elif id == "scroll_stop":
             self.scroll_timer.stop()
-        # if l and not r:
-        #     external.left_click()
-        # elif not l and r:
-        #     external.right_click()
 
     @pyqtSlot(float, float, float, float, float)
     def on_gaze(self, t, l0, l1, r0, r1):
-        if self.mode == Modes.enabled:
-            [x, y, blink, l_variance, r_variance] = gaze_filter.transform(
-                t, l0, l1, r0, r1
-            )
+        if self.mode == Modes.enabled or self.mode == Modes.cursor:
+            [
+                x,
+                y,
+                flips,
+                flip_position,
+                l_variance,
+                r_variance,
+            ] = gaze_filter.transform(t, l0, l1, r0, r1)
             # self.graph.addPoint(t, l0, l1, r0, r1, x, y)
-            self.on_blink(blink)
+            self.on_blink(flips, flip_position)
             self.status_widget.on_gaze(l_variance, r_variance)
             self.currPos = QPointF(x, y)
+            self.gaze_pointer.on_gaze(rel2abs(self.currPos))
             self.activation.update_gaze(x, y)
             if self.activation.state == GridActivationState.SELECTING:
                 self.grid_widget.on_gaze(x, y)
-            self.gaze_pointer.on_gaze(rel2abs(self.currPos))
         elif self.mode == Modes.paused:
-            [_, _, blink, _, _] = gaze_filter.transform(
+            [_, _, flips, flip_position, _, _] = gaze_filter.transform(
                 t, l0, l1, r0, r1, position=False, variance=False
             )
-            self.on_blink(blink)
+            self.on_blink(flips, flip_position)
         elif self.mode == Modes.scrolling:
-            [_, _, blink, _, _] = gaze_filter.transform(
+            [_, _, flips, flip_position, _, _] = gaze_filter.transform(
                 t, l0, l1, r0, r1, position=False, variance=False
             )
-            self.on_blink(blink)
+            self.on_blink(flips, flip_position)
 
     @pyqtSlot()
     def onHotkeyPressed(self):

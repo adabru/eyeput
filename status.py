@@ -77,12 +77,17 @@ class Status(QWidget):
 
         #     painter.drawPixmap(dx, dy, newWidth, newHeight, self.pixmap)
 
-        # draw eye cirlces
-        painter.setPen(Colors.eye_border)
-        painter.setBrush(self.eyes[0])
-        painter.drawEllipse(QRect(0, 0, 30, 30))
-        painter.setBrush(self.eyes[1])
-        painter.drawEllipse(QRect(40, 0, 30, 30))
+        # # draw eye cirlces
+        # painter.setPen(Colors.eye_border)
+        # painter.setBrush(self.eyes[0])
+        # painter.drawEllipse(QRect(0, 0, 30, 30))
+        # painter.setBrush(self.eyes[1])
+        # painter.drawEllipse(QRect(40, 0, 30, 30))
+
+        # draw background
+        # painter.setPen(Colors.text)
+        painter.setBrush(QColor(255, 255, 255, 120))
+        painter.drawRect(QRect(0, 0, 50, 30))
 
         # draw text
         fontSize = 8

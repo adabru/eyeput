@@ -48,6 +48,7 @@ class Modes:
     paused = "paused"
     enabled = "enabled"
     scrolling = "scrolling"
+    cursor = "cursor"
 
 
 class Times:
