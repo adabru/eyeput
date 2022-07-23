@@ -2,7 +2,7 @@ import os.path
 
 from PyQt5.QtWidgets import QWidget
 from PyQt5.QtGui import QPainter, QPixmap
-from PyQt5.QtCore import Qt, QPoint, QRect, QTimer
+from PyQt5.QtCore import Qt, QPoint, QPointF, QRect, QTimer
 
 from settings import *
 
@@ -27,8 +27,9 @@ class GazePointer(QWidget):
     correction = (None, None)
     is_moving = False
 
-    def __init__(self, parent, *args, **kwargs):
-        super().__init__(parent, *args, **kwargs)
+    def __init__(self, parent, rel2abs):
+        super().__init__(parent)
+        self.rel2abs = rel2abs
         self.flash_timer = QTimer(self)
         self.flash_timer.timeout.connect(self.flash)
         self.flash_timer.setInterval(int(0.05 * 1000))
@@ -44,7 +45,7 @@ class GazePointer(QWidget):
         self.flash_state = not self.flash_state
         self.update()
 
-    def stop_move(self, position):
+    def stop_move(self, x, y):
         self.is_moving = False
         self.flash_timer.stop()
         self.hide()
@@ -54,7 +55,8 @@ class GazePointer(QWidget):
         diff = self.correction[1].pos() - self.correction[0].pos()
         return self.pos() + diff / 5
 
-    def start_move(self, position):
+    def start_move(self, x, y):
+        position = self.rel2abs(QPointF(x, y))
         self.show()
         self.correction[0].show()
         self.correction[1].show()
@@ -63,7 +65,8 @@ class GazePointer(QWidget):
         self.correction[0].move(position + QPoint(0, 30))
         self.flash_timer.start()
 
-    def on_gaze(self, position):
+    def on_gaze(self, x, y):
+        position = self.rel2abs(QPointF(x, y))
         if self.is_moving:
             self.correction[1].move(position + QPoint(0, 30))
 
@@ -74,9 +77,3 @@ class GazePointer(QWidget):
         else:
             painter.setPen(QColor(0, 255, 0, 255))
         painter.drawRect(QRect(0, 0, 1, 1))
-
-        # painter.drawPixmap(
-        #     0,
-        #     0,
-        #     self.pixmap,
-        # )

@@ -1,9 +1,10 @@
+import pickle
 from PyQt5.QtCore import pyqtSignal, QThread, QMutex
 
 from unix_socket import UnixSocket
 from settings import *
 
-sock_gaze = UnixSocket(Sockets.gaze, 150)
+sock_gaze = UnixSocket(Sockets.gaze, 70)
 
 # for debugging
 # from graph import *
@@ -33,7 +34,7 @@ class GazeThread(QThread):
                     self.pause_lock.lock()
                     self.pause_lock.unlock()
                     gaze_frame = sock_gaze.receive()
-                    [t, l0, l1, r0, r1] = [float(x) for x in gaze_frame.split(" ")]
+                    (t, l0, l1, r0, r1) = pickle.loads(gaze_frame)
                     self.gaze_signal.emit(t, l0, l1, r0, r1)
                     # graph.gaze_signal.emit(t, l0, l1, r0, r1, x, y)
 

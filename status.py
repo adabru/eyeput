@@ -45,7 +45,7 @@ class Status(QWidget):
                 self._lerp(Colors.eye_flickering.value(), Colors.eye_opened.value(), a),
             )
 
-    def on_gaze(self, l_variance, r_variance):
+    def on_variance(self, l_variance, r_variance):
         l = self._get_color(l_variance)
         r = self._get_color(r_variance)
         if self.eyes != (l, r):

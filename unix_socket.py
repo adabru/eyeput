@@ -53,7 +53,9 @@ class UnixSocket:
         self.connection, client_address = self.sock.accept()
 
     def send(self, msg):
-        packet = msg.encode().ljust(self.msg_length, b"\0")
+        if isinstance(msg, str):
+            msg = msg.encode()
+        packet = msg.ljust(self.msg_length, b"\0")
         totalsent = 0
         while totalsent < self.msg_length:
             sent = self.sock.send(packet[totalsent:])
@@ -71,4 +73,7 @@ class UnixSocket:
             chunks.append(chunk)
             bytes_recd = bytes_recd + len(chunk)
 
-        return b"".join(chunks).strip(b"\0").decode()
+        return b"".join(chunks)
+
+    def receive_string(self):
+        return self.receive().strip(b"\0").decode()

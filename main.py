@@ -42,11 +42,10 @@ class App(QObject):
     mode = Modes.enabled
     pause_lock = QMutex()
 
-    click_timer = None
     scroll_timer = None
-    currPos = QPointF(0, 0)
-    lastPos = QPointF(0, 0)
-    counter = 0
+    # click_timer = None
+    # currPos = QPointF(0, 0)
+    # lastPos = QPointF(0, 0)
 
     def __init__(self):
         super().__init__()
@@ -54,8 +53,8 @@ class App(QObject):
         global screen_geometry
         screen_geometry = QApplication.primaryScreen().geometry()
 
-        self.click_timer = QTimer(self)
-        self.click_timer.timeout.connect(self.processMouse)
+        # self.click_timer = QTimer(self)
+        # self.click_timer.timeout.connect(self.processMouse)
         self.scroll_timer = QTimer(self)
         self.scroll_timer.setInterval(int(Times.scroll_interval * 1000))
         self.scroll_timer.timeout.connect(self.scroll_step)
@@ -83,7 +82,7 @@ class App(QObject):
 
         self.status_widget = Status(self.widget, self.mode)
 
-        self.gaze_pointer = GazePointer(self.widget)
+        self.gaze_pointer = GazePointer(self.widget, rel2abs)
 
         self.set_mode(Modes.enabled)
 
@@ -110,17 +109,17 @@ class App(QObject):
             self.set_mode(Modes.paused)
         elif id == "mode_scrolling":
             self.set_mode(Modes.scrolling)
-        elif id == "mouse_move":
-            position = rel2abs(QPointF(blink_position[0], blink_position[1]))
-            external.mouse_move(position.x(), position.y())
-            self.gaze_pointer.on_gaze(position)
+        # elif id == "mouse_move":
+        #     position = rel2abs(QPointF(blink_position[0], blink_position[1]))
+        #     external.mouse_move(position.x(), position.y())
+        #     self.gaze_pointer.on_gaze(position)
         elif id == "mouse_start_move":
-            position = rel2abs(QPointF(blink_position[0], blink_position[1]))
-            self.gaze_pointer.start_move(position)
+            self.gaze_pointer.start_move(blink_position[0], blink_position[1])
             self.set_mode(Modes.cursor)
         elif id == "mouse_stop_move":
-            position = rel2abs(QPointF(blink_position[0], blink_position[1]))
-            target_position = self.gaze_pointer.stop_move(position)
+            target_position = self.gaze_pointer.stop_move(
+                blink_position[0], blink_position[1]
+            )
             self.set_mode(Modes.enabled)
             external.mouse_move(target_position.x(), target_position.y())
         elif id == "left_click":
@@ -138,33 +137,46 @@ class App(QObject):
 
     @pyqtSlot(float, float, float, float, float)
     def on_gaze(self, t, l0, l1, r0, r1):
-        if self.mode == Modes.enabled or self.mode == Modes.cursor:
-            [
-                x,
-                y,
-                flips,
-                flip_position,
-                l_variance,
-                r_variance,
-            ] = gaze_filter.transform(t, l0, l1, r0, r1)
-            # self.graph.addPoint(t, l0, l1, r0, r1, x, y)
-            self.on_blink(flips, flip_position)
-            self.status_widget.on_gaze(l_variance, r_variance)
-            self.currPos = QPointF(x, y)
-            self.gaze_pointer.on_gaze(rel2abs(self.currPos))
-            self.activation.update_gaze(x, y)
-            if self.activation.state == GridActivationState.SELECTING:
-                self.grid_widget.on_gaze(x, y)
-        elif self.mode == Modes.paused:
-            [_, _, flips, flip_position, _, _] = gaze_filter.transform(
-                t, l0, l1, r0, r1, position=False, variance=False
-            )
-            self.on_blink(flips, flip_position)
-        elif self.mode == Modes.scrolling:
-            [_, _, flips, flip_position, _, _] = gaze_filter.transform(
-                t, l0, l1, r0, r1, position=False, variance=False
-            )
-            self.on_blink(flips, flip_position)
+        callbacks = {
+            Modes.enabled: {
+                "on_blink": self.on_blink,
+                # "on_variance": self.status_widget.on_variance,
+            },
+            Modes.cursor: {
+                "on_blink": self.on_blink,
+                "on_position": self.gaze_pointer.on_gaze,
+            },
+            Modes.paused: {
+                "on_blink": self.on_blink,
+            },
+            Modes.scrolling: {
+                "on_blink": self.on_blink,
+            },
+        }
+        position_callback = callbacks[self.mode].get("on_position", None)
+        blink_callback = callbacks[self.mode].get("on_blink", None)
+        variance_callback = callbacks[self.mode].get("on_variance", None)
+        [x, y, flips, flip_position, l_variance, r_variance,] = gaze_filter.transform(
+            t,
+            l0,
+            l1,
+            r0,
+            r1,
+            position=position_callback,
+            blink=blink_callback,
+            variance=variance_callback,
+        )
+        if position_callback:
+            position_callback(x, y)
+        if blink_callback:
+            blink_callback(flips, flip_position)
+        if variance_callback:
+            variance_callback(l_variance, r_variance)
+        # self.graph.addPoint(t, l0, l1, r0, r1, x, y)
+        # self.currPos = QPointF(x, y)
+        # self.activation.update_gaze(x, y)
+        # if self.activation.state == GridActivationState.SELECTING:
+        #     self.grid_widget.on_gaze(x, y)
 
     @pyqtSlot()
     def onHotkeyPressed(self):
@@ -196,21 +208,21 @@ class App(QObject):
     def scroll_step(self):
         external.scroll(self.scroll_direction)
 
-    @pyqtSlot()
-    def processMouse(self):
-        dist = rel2abs(self.currPos - self.lastPos).manhattanLength()
+    # @pyqtSlot()
+    # def processMouse(self):
+    #     dist = rel2abs(self.currPos - self.lastPos).manhattanLength()
 
-        if dist > 10:
-            self.mouseMoveTime = time.time()
-            log_debug("mouse moved: " + str(dist))
+    #     if dist > 10:
+    #         self.mouseMoveTime = time.time()
+    #         log_debug("mouse moved: " + str(dist))
 
-        elif time.time() - self.mouseMoveTime > Times.mouse_movement:
-            log_debug("mouse click")
-            pos = rel2abs(self.currPos)
-            external.left_click(pos)
-            self.click_timer.stop()
+    #     elif time.time() - self.mouseMoveTime > Times.mouse_movement:
+    #         log_debug("mouse click")
+    #         pos = rel2abs(self.currPos)
+    #         external.left_click(pos)
+    #         self.click_timer.stop()
 
-        self.lastPos = self.currPos
+    #     self.lastPos = self.currPos
 
 
 qapp = QApplication(sys.argv)
