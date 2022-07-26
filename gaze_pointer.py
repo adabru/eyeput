@@ -30,9 +30,9 @@ class GazePointer(QWidget):
     def __init__(self, parent, rel2abs):
         super().__init__(parent)
         self.rel2abs = rel2abs
-        self.flash_timer = QTimer(self)
-        self.flash_timer.timeout.connect(self.flash)
-        self.flash_timer.setInterval(int(0.05 * 1000))
+        # self.flash_timer = QTimer(self)
+        # self.flash_timer.timeout.connect(self.flash)
+        # self.flash_timer.setInterval(int(0.05 * 1000))
         self.pixmap = QPixmap(f"{os.path.dirname(__file__)}/resources/gaze_pointer.png")
         self.setGeometry(0, 0, self.pixmap.width(), self.pixmap.height())
         self.correction = (
@@ -47,7 +47,7 @@ class GazePointer(QWidget):
 
     def stop_move(self, x, y):
         self.is_moving = False
-        self.flash_timer.stop()
+        # self.flash_timer.stop()
         self.hide()
         self.correction[0].hide()
         self.correction[1].hide()
@@ -62,18 +62,18 @@ class GazePointer(QWidget):
         self.correction[1].show()
         self.is_moving = True
         self.move(position)
-        self.correction[0].move(position + QPoint(0, 30))
-        self.flash_timer.start()
+        self.correction[0].move(position)
+        # self.flash_timer.start()
 
     def on_gaze(self, x, y):
         position = self.rel2abs(QPointF(x, y))
         if self.is_moving:
-            self.correction[1].move(position + QPoint(0, 30))
+            self.correction[1].move(position)
 
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        if self.flash_state:
-            painter.setPen(QColor(255, 0, 0, 255))
-        else:
-            painter.setPen(QColor(0, 255, 0, 255))
-        painter.drawRect(QRect(0, 0, 1, 1))
+    # def paintEvent(self, event):
+    #     painter = QPainter(self)
+    #     if self.flash_state:
+    #         painter.setPen(QColor(255, 0, 0, 255))
+    #     else:
+    #         painter.setPen(QColor(0, 255, 0, 255))
+    #     painter.drawRect(QRect(0, 0, 1, 1))

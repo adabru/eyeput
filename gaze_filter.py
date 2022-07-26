@@ -1,5 +1,7 @@
 from collections import deque
 from itertools import islice
+from pathlib import Path
+import pickle
 
 import numpy as np
 
@@ -182,12 +184,48 @@ class FlickerFilter:
         return (self._get_factor(left), self._get_factor(right))
 
 
+class ProjectionFilter:
+    screen_size_mm = (344.0, 193.0)
+    calibration = []
+
+    def __init__(self, label):
+        self.calibration_path = Path("~/.cache/eyeput", label).expanduser()
+        self.calibration_path.parent.mkdir(exist_ok=True, parents=True)
+        try:
+            with self.calibration_path.open("rb") as file:
+                self.calibration = pickle.load(file)
+        except FileNotFoundError as e:
+            self.calibration = []
+
+    def add_calibration_point(self):
+        with self.calibration_path.open("wb") as file:
+            pickle.dump(self.calibration, file, pickle.HIGHEST_PROTOCOL)
+
+    def transform(self, t, v0, v1):
+        # eye closed or offscreen
+        if not v1[-1].any():
+            return np.array((0.0, 0.0))
+        # project to zero plane
+        x = v1[-1][0] / self.screen_size_mm[0] + 0.5
+        y = -v1[-1][1] / self.screen_size_mm[1] + 1.0
+        return np.array((x, y))
+
+
 class GazeFilter:
     t = deque([0] * 50, 50)
+    # eye position relative to tracker [mm]
+    l0 = deque([np.array((0.0, 0.0, 0.0))] * 50, 50)
+    # gaze destination relative to tracker [mm]
+    l1 = deque([np.array((0.0, 0.0, 0.0))] * 50, 50)
+    r0 = deque([np.array((0.0, 0.0, 0.0))] * 50, 50)
+    r1 = deque([np.array((0.0, 0.0, 0.0))] * 50, 50)
+    # screen position, 0=top-left 1=bottom-right
     left = deque([np.array((0.0, 0.0))] * 50, 50)
     right = deque([np.array((0.0, 0.0))] * 50, 50)
     filtered_position = deque([np.array((0.0, 0.0))] * 50, 50)
 
+    projection_filter_left = ProjectionFilter("left")
+    projection_filter_right = ProjectionFilter("right")
     pointer_filter = PointerFilter(np.array((0.02, 0.02)), 20)
     blink_filter = BlinkFilter(0.16, 0.04)
     flicker_filter = FlickerFilter(0.7 * np.array((0.02, 0.02)), 5)
@@ -196,9 +234,15 @@ class GazeFilter:
     def transform(self, t, l0, l1, r0, r1, position=True, blink=True, variance=True):
         self.t.append(t)
         t = self.t
-        self.left.append(np.array((l0, l1)))
+        self.l0.append(np.array(l0))
+        self.l1.append(np.array(l1))
+        self.r0.append(np.array(r0))
+        self.r1.append(np.array(r1))
+        _left = self.projection_filter_left.transform(t, self.l0, self.l1)
+        self.left.append(_left)
         left = self.left
-        self.right.append(np.array((r0, r1)))
+        _right = self.projection_filter_right.transform(t, self.r0, self.r1)
+        self.right.append(_right)
         right = self.right
         [x, y] = left[-1]
         if position:

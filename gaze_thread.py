@@ -4,7 +4,7 @@ from PyQt5.QtCore import pyqtSignal, QThread, QMutex
 from unix_socket import UnixSocket
 from settings import *
 
-sock_gaze = UnixSocket(Sockets.gaze, 70)
+sock_gaze = UnixSocket(Sockets.gaze, 200)
 
 # for debugging
 # from graph import *
@@ -13,7 +13,7 @@ sock_gaze = UnixSocket(Sockets.gaze, 70)
 
 
 class GazeThread(QThread):
-    gaze_signal = pyqtSignal(float, float, float, float, float)
+    gaze_signal = pyqtSignal(float, list, list, list, list)
 
     def __init__(self, pause_lock):
         super().__init__()
@@ -36,12 +36,15 @@ class GazeThread(QThread):
                     gaze_frame = sock_gaze.receive()
                     (t, l0, l1, r0, r1) = pickle.loads(gaze_frame)
                     self.gaze_signal.emit(t, l0, l1, r0, r1)
-                    # graph.gaze_signal.emit(t, l0, l1, r0, r1, x, y)
+                    # graph.gaze_signal.emit(t, l0, l1, r0, r1)
 
             except ValueError as err:
                 print(err)
 
             except RuntimeError as err:
+                print(err)
+
+            except pickle.UnpicklingError as err:
                 print(err)
 
             finally:

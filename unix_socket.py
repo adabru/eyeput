@@ -1,5 +1,4 @@
-import os
-import socket
+import os, socket
 
 
 class UnixSocket:
@@ -9,11 +8,13 @@ class UnixSocket:
         self.path = path
         self.msg_length = msg_length
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.sock.setblocking(False)
 
     def try_send(self, msg):
         try:
             if self.reconnect:
                 self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                self.sock.setblocking(False)
                 self.sock.connect(self.path)
                 self.reconnect = False
             self.send(msg)
@@ -50,6 +51,7 @@ class UnixSocket:
         os.umask(mask)
 
     def accept(self):
+        self.sock.setblocking(True)
         self.connection, client_address = self.sock.accept()
 
     def send(self, msg):

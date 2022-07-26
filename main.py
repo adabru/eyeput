@@ -135,7 +135,7 @@ class App(QObject):
         elif id == "scroll_stop":
             self.scroll_timer.stop()
 
-    @pyqtSlot(float, float, float, float, float)
+    @pyqtSlot(float, list, list, list, list)
     def on_gaze(self, t, l0, l1, r0, r1):
         callbacks = {
             Modes.enabled: {
