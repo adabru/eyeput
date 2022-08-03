@@ -22,26 +22,26 @@ class Area:
 
 areas = [
     Area("center", QRectF(0, 0, 1, 1), None),
-    Area("diag top left", QRectF(-1, -1, 1, 1), "textCmds"),
-    Area("top left", QRectF(0, -1, 0.5, 1), "keyboard1"),
-    Area("top right", QRectF(0.5, -1, 0.5, 1), "keyboard2"),
+    # Area("diag top left", QRectF(-1, -1, 1, 1), "textCmds"),
+    # Area("top left", QRectF(0, -1, 0.5, 1), "keyboard1"),
+    # Area("top right", QRectF(0.5, -1, 0.5, 1), "keyboard2"),
     # Area("left", QRectF(-1, 0, 1, 1), "apps"),
 ]
 
 
-class GridActivationState(Enum):
+class _State(Enum):
     # waiting for activation
-    IDLE = 0
+    IDLE = "IDLE"
     # grid is visible, gaze is outside
-    PRE_SELECTING = 1
+    PRE_SELECTING = "PRE_SELECTING"
     # grid is visible, gaze is selecting
-    SELECTING = 2
+    SELECTING = "SELECTING"
     # grid is invisible, gaze is outside
-    PRE_IDLE = 3
+    PRE_IDLE = "PRE_IDLE"
 
 
 class GridActivation(QObject):
-    state = GridActivationState.IDLE
+    state = _State.IDLE
     last_area = None
 
     deactivate_timer = None
@@ -61,42 +61,32 @@ class GridActivation(QObject):
         return None
 
     def _deactivate(self):
-        assert self.state == GridActivationState.PRE_SELECTING, self.state
+        assert self.state == _State.PRE_SELECTING, self.state
         # for unknown reasons this function can fire twice if not stopping the timer
         self.deactivate_timer.stop()
-        log_debug("PRE_SELECTING → PRE_IDLE : _deactivate")
-        self.state = GridActivationState.PRE_IDLE
-        self._trigger()
+        self._change_state(_State.PRE_IDLE, "_deactivate", trigger="_hide")
 
-    def _trigger(self, area=None):
-        self.activate_grid_signal.emit(area and area.target)
+    def _change_state(self, new_state, description="", trigger=None):
+        log_debug("%s → %s %s" % (self.state, new_state, description))
+        self.state = new_state
+        if trigger:
+            log_debug("trigger " + trigger)
+            self.activate_grid_signal.emit(trigger)
 
     def go_idle(self):
-        assert self.state == GridActivationState.SELECTING, self.state
-        log_debug("SELECTING → IDLE")
-        self.state = GridActivationState.IDLE
-        QTimer.singleShot(50, self._trigger)
+        assert self.state == _State.SELECTING, self.state
+        self._change_state(_State.IDLE, "go_idle")
+        QTimer.singleShot(50, lambda: self.activate_grid_signal.emit("_hide"))
 
-    def hotkeyTriggered(self):
-        if self.state == GridActivationState.IDLE:
-            log_debug("IDLE → SELECTING hotkey")
-            self.state = GridActivationState.SELECTING
-            self._trigger(areas[0])
-
-        elif self.state == GridActivationState.SELECTING:
-            log_debug("SELECTING → IDLE hotkey")
-            self.state = GridActivationState.IDLE
-            self._trigger()
-
-        elif self.state == GridActivationState.PRE_SELECTING:
-            log_debug("PRE_SELECTING → PRE_IDLE hotkey")
-            self.state = GridActivationState.PRE_IDLE
-            self._trigger()
-
-        elif self.state == GridActivationState.PRE_IDLE:
-            log_debug("PRE_IDLE → PRE_SELECTING hotkey")
-            self.state = GridActivationState.PRE_SELECTING
-            self._trigger(areas[0])
+    def hotkeyTriggered(self, label="keyboard1"):
+        if self.state == _State.IDLE:
+            self._change_state(_State.SELECTING, "hotkey", trigger=label)
+        elif self.state == _State.SELECTING:
+            self._change_state(_State.IDLE, "hotkey", trigger="_hide")
+        elif self.state == _State.PRE_SELECTING:
+            self._change_state(_State.PRE_IDLE, "hotkey", trigger="_hide")
+        elif self.state == _State.PRE_IDLE:
+            self._change_state(_State.PRE_SELECTING, "hotkey", trigger=label)
 
     def update_gaze(self, x, y):
         out_of_bounds_or_blinking = x == 0 and y == 0
@@ -105,34 +95,31 @@ class GridActivation(QObject):
             gaze_is_inside = area and area.label == "center"
             gaze_is_outside = not gaze_is_inside
 
-        if self.state == GridActivationState.IDLE:
+        if self.state == _State.IDLE:
             if not out_of_bounds_or_blinking and gaze_is_outside:
-                log_debug("IDLE → PRE_SELECTING : " + str(area and area.label))
-                self.state = GridActivationState.PRE_SELECTING
-                self._trigger(area)
+                if area:
+                    self._change_state(
+                        _State.PRE_SELECTING, area.label, trigger=area.target
+                    )
+                else:
+                    self._change_state(_State.PRE_SELECTING, "None", trigger="_hide")
                 self.deactivate_timer.start(int(Times.out_of_screen * 1000))
 
-        elif self.state == GridActivationState.PRE_SELECTING:
+        elif self.state == _State.PRE_SELECTING:
             if out_of_bounds_or_blinking:
-                log_debug("PRE_SELECTING → PRE_IDLE : out_of_bounds_or_blinking")
-                self.state = GridActivationState.PRE_IDLE
-                self._trigger()
+                self._change_state(_State.PRE_IDLE, "gaze outside", trigger="_hide")
                 self.deactivate_timer.stop()
             elif gaze_is_inside:
-                log_debug("PRE_SELECTING → SELECTING")
-                self.state = GridActivationState.SELECTING
+                self._change_state(_State.SELECTING)
                 self.deactivate_timer.stop()
 
-        elif self.state == GridActivationState.SELECTING:
+        elif self.state == _State.SELECTING:
             if out_of_bounds_or_blinking or gaze_is_outside:
-                log_debug("SELECTING → PRE_IDLE")
-                self.state = GridActivationState.PRE_IDLE
-                self._trigger()
+                self._change_state(_State.PRE_IDLE, "gaze outside", trigger="_hide")
 
-        elif self.state == GridActivationState.PRE_IDLE:
+        elif self.state == _State.PRE_IDLE:
             if not out_of_bounds_or_blinking and gaze_is_inside:
-                log_debug("PRE_IDLE → IDLE")
-                self.state = GridActivationState.IDLE
+                self._change_state(_State.IDLE)
 
         if not out_of_bounds_or_blinking:
             self.last_area = area

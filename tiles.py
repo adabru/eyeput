@@ -5,7 +5,7 @@ from PyQt5.QtCore import QRectF
 from settings import *
 
 
-class InternalAction:
+class _Action:
     def __init__(self, label, x, y, img=None):
         self.label = label
         self.x = x
@@ -13,34 +13,36 @@ class InternalAction:
         self.img = img
 
 
-class MouseAction:
+class InternalAction(_Action):
+    def __init__(self, label, x, y, img=None):
+        super().__init__(label, x, y, img=img)
+
+
+class SetModeAction(_Action):
+    def __init__(self, label, x, y, mode, img=None):
+        super().__init__(label, x, y, img=img)
+        self.mode = mode
+
+
+class MouseAction(_Action):
     def __init__(self, label, x, y, id, img=None):
-        self.label = label
-        self.x = x
-        self.y = y
-        self.img = img
+        super().__init__(label, x, y, img=img)
         self.id = id
 
 
-class OtherAction:
+class OtherAction(_Action):
     def __init__(self, label, x, y, id, img=None):
-        self.label = label
-        self.x = x
-        self.y = y
-        self.img = img
+        super().__init__(label, x, y, img=img)
         self.id = id
 
 
-class KeyAction:
+class KeyAction(_Action):
     def __init__(self, label, x, y, pressKey=None, img=None):
-        self.label = label
-        self.x = x
-        self.y = y
-        self.img = img
+        super().__init__(label, x, y, img=img)
         self.pressKey = pressKey or label
 
 
-class CmdAction:
+class CmdAction(_Action):
     def __init__(self, label, x, y, cmd, img=None):
         self.label = label
         self.x = x
@@ -262,28 +264,35 @@ tiles = {
             img="invalid path",
         ),
     },
+    "left_eye": {
+        # row 0
+        "scroll_mode": SetModeAction("↕", 0, 0, Modes.scrolling),
+        "click_mode": SetModeAction("🖰", 1, 0, Modes.enabled),
+        "pause_mode": SetModeAction("pause", 2, 0, Modes.paused),
+    },
 }
 
 blink_commands = {
     Modes.enabled: {
-        ". r .": "mode_paused",
-        ".rl.": "mode_scrolling",
+        ". r .": SetModeAction("", 0, 0, Modes.paused),
+        ".r": SetModeAction("", 0, 0, Modes.grid),
         # ". .": "mouse_move",
         ".l": "mouse_start_move",
         # ".r.": "left_click",
-        # ".l.": "right_click",
     },
     Modes.cursor: {
         ".": "mouse_stop_move",
     },
+    Modes.grid: {
+        " ": SetModeAction("", 0, 0, Modes.enabled),
+    },
     Modes.paused: {
-        ". l .": "mode_enabled",
-        ".l.r.": "mode_scrolling",
-        ".rl.": "mode_scrolling",
+        ". l .": SetModeAction("", 0, 0, Modes.enabled),
+        ".l.r.": SetModeAction("", 0, 0, Modes.scrolling),
+        ".rl.": SetModeAction("", 0, 0, Modes.scrolling),
     },
     Modes.scrolling: {
-        ". r .": "mode_paused",
-        ". l .": "mode_enabled",
+        ". . .": SetModeAction("", 0, 0, Modes.grid),
         ".l": "scroll_up",
         ".r": "scroll_down",
         " ": "scroll_stop",

@@ -42,7 +42,7 @@ class LabelGrid(QWidget):
                 self.labels[(x, y)] = label
 
     def activate(self, label):
-        if label:
+        if label != "_hide":
             self.set_level(label)
             if not self.isVisible():
                 self.show()
@@ -59,27 +59,22 @@ class LabelGrid(QWidget):
 
     def on_gaze(self, x, y, after_activation=False):
         if not QRectF(0, 0, 1, 1).contains(x, y):
-            widget = None
-            log_debug("outside")
-            return
+            return log_debug("outside")
 
         xWidget = int(Tiles.x * x)
         yWidget = int(Tiles.y * y)
         if xWidget >= Tiles.x or yWidget >= Tiles.y:
-            log_debug("invalid indices: " + str(xWidget) + ", " + str(yWidget))
-            return
+            return log_debug("invalid indices: " + str(xWidget) + ", " + str(yWidget))
+
         widget = self.labels[(xWidget, yWidget)]
 
         if not widget.isVisible():
-            widget = None
-            log_debug("invisible")
-            return
+            return log_debug("invisible")
 
         if widget == self.hover_item:
-            log_debug("same")
-            return
+            return log_debug("same")
 
-        if widget != None and widget.isVisible() and not after_activation:
+        if not after_activation:
             self.hover_timer.start(int(Times.element_selection * 1000))
         else:
             self.hover_timer.stop()
@@ -146,8 +141,5 @@ class LabelGrid(QWidget):
             self.state.modifiers.clear()
             self.update_grid()
 
-        elif isinstance(self.hover_item.item, CmdAction):
-            self.action_signal.emit(self.hover_item.item, None, True)
-
-        elif isinstance(self.hover_item.item, OtherAction):
+        else:
             self.action_signal.emit(self.hover_item.item, None, True)

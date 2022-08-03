@@ -49,6 +49,7 @@ class Modes:
     enabled = "enabled"
     scrolling = "scrolling"
     cursor = "cursor"
+    grid = "grid"
 
 
 class Times:

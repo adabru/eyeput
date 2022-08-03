@@ -10,6 +10,7 @@ class LogLvl(Enum):
 
 logLevel = LogLvl.INFO
 # logLevel = LogLvl.DEBUG
+last_message = ""
 
 
 def log_info(s):
@@ -23,5 +24,10 @@ def log_verbose(s):
 
 
 def log_debug(s):
+    global last_message
     if logLevel.value > LogLvl.VERBOSE.value:
-        print(s)
+        if s == last_message:
+            print(".", end="", flush=True)
+        else:
+            print("\n" + s, end="")
+        last_message = s

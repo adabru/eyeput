@@ -135,7 +135,10 @@ class PointerFilter:
 
     def transform(self, t, left, right):
         if not left[-1].any():
-            return left[-1]
+            if not right[-1].any():
+                return left[-1]
+            else:
+                return self.left_filter.transform(right, self.lookbehind, self.radius)
         else:
             return self.left_filter.transform(left, self.lookbehind, self.radius)
 
