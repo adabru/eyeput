@@ -1,8 +1,11 @@
+from dataclasses import dataclass
 import pickle
+
 from PyQt5.QtCore import pyqtSignal, QThread, QMutex
 
 from unix_socket import UnixSocket
 from settings import *
+from util import *
 
 sock_gaze = UnixSocket(Sockets.gaze, 200)
 
@@ -12,8 +15,25 @@ sock_gaze = UnixSocket(Sockets.gaze, 200)
 # graph = Graph()
 
 
+@dataclass
+class InputFrame:
+    # timestamp
+    t: float
+    # eye position relative to tracker [mm]
+    l0: np.ndarray
+    r0: np.ndarray
+    # gaze destination relative to tracker [mm]
+    l1: np.ndarray
+    r1: np.ndarray
+
+    @staticmethod
+    def from_bytes(transmission: bytes) -> "InputFrame":
+        (t, l0, l1, r0, r1) = pickle.loads(transmission)
+        return InputFrame(t, vec(l0), vec(r0), vec(l1), vec(r1))
+
+
 class GazeThread(QThread):
-    gaze_signal = pyqtSignal(float, list, list, list, list)
+    gaze_signal = pyqtSignal(object)
 
     def __init__(self, pause_lock):
         super().__init__()
@@ -33,9 +53,9 @@ class GazeThread(QThread):
                 while True:
                     self.pause_lock.lock()
                     self.pause_lock.unlock()
-                    gaze_frame = sock_gaze.receive()
-                    (t, l0, l1, r0, r1) = pickle.loads(gaze_frame)
-                    self.gaze_signal.emit(t, l0, l1, r0, r1)
+                    transmission = sock_gaze.receive()
+                    gaze_frame = InputFrame.from_bytes(transmission)
+                    self.gaze_signal.emit(gaze_frame)
                     # graph.gaze_signal.emit(t, l0, l1, r0, r1)
 
             except ValueError as err:

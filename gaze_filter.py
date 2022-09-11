@@ -1,15 +1,15 @@
 from collections import deque
+from dataclasses import dataclass
 from itertools import islice
-from pathlib import Path
-import pickle
 
 import numpy as np
 
+from gaze_thread import InputFrame
 from settings import *
 
 
 # recognize blink patterns
-# closing and opening brackets from both eyes are synchronized, limited by the latency
+# closing and opening brackets from both eyes are synchronized during sync_latency
 # available patterns, e.g:
 #
 #      ".r." ".l." ". ."   ". r r ."    ". l ."
@@ -91,8 +91,8 @@ class BlinkFilter:
             self.flips = self.flips[-1:]
             self.flip_times = self.flip_times[-1:]
             return result
-        # preemptively cancel unregistered blink
-        if not self.flips in self.prefix_tree:
+        # preemptively cancel unregistered blink and timed out blink
+        if not self.flips in self.prefix_tree or dt > self.latency:
             self.flips = self.flips[-1:]
             self.flip_times = self.flip_times[-1:]
         return (None, None)
@@ -188,81 +188,96 @@ class FlickerFilter:
 
 
 class ProjectionFilter:
-    screen_size_mm = (344.0, 193.0)
-    calibration = []
-
-    def __init__(self, label):
-        self.calibration_path = Path("~/.cache/eyeput", label).expanduser()
-        self.calibration_path.parent.mkdir(exist_ok=True, parents=True)
-        try:
-            with self.calibration_path.open("rb") as file:
-                self.calibration = pickle.load(file)
-        except FileNotFoundError as e:
-            self.calibration = []
-
-    def add_calibration_point(self):
-        with self.calibration_path.open("wb") as file:
-            pickle.dump(self.calibration, file, pickle.HIGHEST_PROTOCOL)
+    def __init__(self, calibration):
+        self.calibration = calibration
 
     def transform(self, t, v0, v1):
         # eye closed or offscreen
         if not v1[-1].any():
             return np.array((0.0, 0.0))
-        # project to zero plane
-        x = v1[-1][0] / self.screen_size_mm[0] + 0.5
-        y = -v1[-1][1] / self.screen_size_mm[1] + 1.0
-        return np.array((x, y))
+        return self.calibration.transform(t, v0, v1)
+
+
+@dataclass
+class FilteredFrame(InputFrame):
+    # merged projected position, 0=top-left 1=bottom-right
+    screen_position: np.ndarray = None
+    # per eye projected position, 0=top-left 1=bottom-right
+    l_screen_position: np.ndarray = None
+    r_screen_position: np.ndarray = None
+    # encoded blink pattern, e.g. ".r"
+    flips: str = None
+    # screen position where blink occured
+    flip_position: np.ndarray = None
+    # accuracy of measurement [0=bad, 1=good]
+    l_variance: float = None
+    r_variance: float = None
+
+    def __init__(self, input_frame: InputFrame):
+        self.__dict__.update(input_frame.__dict__)
 
 
 class GazeFilter:
     t = deque([0] * 50, 50)
     # eye position relative to tracker [mm]
     l0 = deque([np.array((0.0, 0.0, 0.0))] * 50, 50)
+    r0 = deque([np.array((0.0, 0.0, 0.0))] * 50, 50)
     # gaze destination relative to tracker [mm]
     l1 = deque([np.array((0.0, 0.0, 0.0))] * 50, 50)
-    r0 = deque([np.array((0.0, 0.0, 0.0))] * 50, 50)
     r1 = deque([np.array((0.0, 0.0, 0.0))] * 50, 50)
     # screen position, 0=top-left 1=bottom-right
     left = deque([np.array((0.0, 0.0))] * 50, 50)
     right = deque([np.array((0.0, 0.0))] * 50, 50)
+    # merged screen position
     filtered_position = deque([np.array((0.0, 0.0))] * 50, 50)
 
-    projection_filter_left = ProjectionFilter("left")
-    projection_filter_right = ProjectionFilter("right")
     pointer_filter = PointerFilter(np.array((0.02, 0.02)), 20)
     blink_filter = BlinkFilter(0.16, 0.04)
     flicker_filter = FlickerFilter(0.7 * np.array((0.02, 0.02)), 5)
     # flicker_filter = VarianceFilter(5, 0.02)
 
-    def transform(self, t, l0, l1, r0, r1, position=True, blink=True, variance=True):
-        self.t.append(t)
-        t = self.t
-        self.l0.append(np.array(l0))
-        self.l1.append(np.array(l1))
-        self.r0.append(np.array(r0))
-        self.r1.append(np.array(r1))
-        _left = self.projection_filter_left.transform(t, self.l0, self.l1)
-        self.left.append(_left)
-        left = self.left
-        _right = self.projection_filter_right.transform(t, self.r0, self.r1)
-        self.right.append(_right)
-        right = self.right
-        [x, y] = left[-1]
+    def __init__(self, calibration):
+        self.projection_filter_left = ProjectionFilter(calibration.get("left"))
+        self.projection_filter_right = ProjectionFilter(calibration.get("right"))
+
+    def transform(
+        self, input_frame: InputFrame, position=True, blink=True, variance=True
+    ):
+        frame = FilteredFrame(input_frame)
+        self.t.append(frame.t)
+        self.l0.append(frame.l0)
+        self.l1.append(frame.l1)
+        self.r0.append(frame.r0)
+        self.r1.append(frame.r1)
+        frame.l_screen_position = self.projection_filter_left.transform(
+            self.t, self.l0, self.l1
+        )
+        frame.r_screen_position = self.projection_filter_right.transform(
+            self.t, self.r0, self.r1
+        )
+        self.left.append(frame.l_screen_position)
+        self.right.append(frame.r_screen_position)
+        frame.screen_position = frame.l_screen_position
         if position:
-            [x, y] = self.pointer_filter.transform(t, left, right)
-        self.filtered_position.append(np.array((x, y)))
-        filtered_position = self.filtered_position
-        [l_variance, r_variance] = [1 * (l0), 1]
+            frame.screen_position = self.pointer_filter.transform(
+                self.t, self.left, self.right
+            )
+        self.filtered_position.append(frame.screen_position)
         if variance:
-            [l_variance, r_variance] = self.flicker_filter.transform(t, left, right)
-        (flips, flip_position) = (None, None)
+            [frame.l_variance, frame.r_variance] = self.flicker_filter.transform(
+                self.t, self.left, self.right
+            )
         if blink:
-            (flips, flip_time) = self.blink_filter.transform(t, left, right)
-        if flip_time:
-            for (_t, _position) in zip(reversed(t), reversed(filtered_position)):
-                if _t < flip_time - 0.05:
-                    flip_position = _position
-                    break
+            (frame.flips, flip_time) = self.blink_filter.transform(
+                self.t, self.left, self.right
+            )
+            if flip_time:
+                for (_t, _position) in zip(
+                    reversed(self.t), reversed(self.filtered_position)
+                ):
+                    if _t < flip_time - 0.05:
+                        frame.flip_position = _position
+                        break
 
         # import timeit
         # _time = lambda n, f: print(timeit.timeit(f, number=n))
@@ -270,7 +285,7 @@ class GazeFilter:
         # _time(1000, lambda: self.pointer_filter.transform(t, left, right))
         # _time(1000, lambda: self.blink_filter.transform(t, left, right))
         # _time(1000, lambda: self.flicker_filter.transform(t, left, right))
-        return [x, y, flips, flip_position, l_variance, r_variance]
+        return frame
 
     def set_blink_patterns(self, blink_patterns):
         self.blink_filter.set_blink_patterns(blink_patterns)

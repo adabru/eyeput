@@ -1,7 +1,6 @@
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import QMarginsF
 
-
 # DEFAULT: True - can be deactivated when debugging
 activate_keypress = True
 
@@ -50,6 +49,9 @@ class Modes:
     scrolling = "scrolling"
     cursor = "cursor"
     grid = "grid"
+    calibration = "calibration"
+    # pseudo mode
+    _previous = "_previous"
 
 
 class Times:

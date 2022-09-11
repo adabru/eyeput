@@ -269,12 +269,14 @@ tiles = {
         "scroll_mode": SetModeAction("↕", 0, 0, Modes.scrolling),
         "click_mode": SetModeAction("🖰", 1, 0, Modes.enabled),
         "pause_mode": SetModeAction("pause", 2, 0, Modes.paused),
+        "calibration": SetModeAction("cal", 3, 0, Modes.calibration),
     },
 }
 
 blink_commands = {
     Modes.enabled: {
         ". r .": SetModeAction("", 0, 0, Modes.paused),
+        ". . . .": SetModeAction("cal", 3, 0, Modes.calibration),
         ".r": SetModeAction("", 0, 0, Modes.grid),
         # ". .": "mouse_move",
         ".l": "mouse_start_move",
@@ -284,17 +286,22 @@ blink_commands = {
         ".": "mouse_stop_move",
     },
     Modes.grid: {
-        " ": SetModeAction("", 0, 0, Modes.enabled),
+        " ": SetModeAction("", 0, 0, Modes._previous),
+    },
+    Modes.calibration: {
+        ". . .": "calibration_cancel",
+        ". .": "calibration_next",
     },
     Modes.paused: {
-        ". l .": SetModeAction("", 0, 0, Modes.enabled),
-        ".l.r.": SetModeAction("", 0, 0, Modes.scrolling),
-        ".rl.": SetModeAction("", 0, 0, Modes.scrolling),
+        ".r": SetModeAction("", 0, 0, Modes.grid),
+        ". . . .": SetModeAction("cal", 3, 0, Modes.calibration),
     },
     Modes.scrolling: {
-        ". . .": SetModeAction("", 0, 0, Modes.grid),
-        ".l": "scroll_up",
-        ".r": "scroll_down",
+        ".r": SetModeAction("", 0, 0, Modes.grid),
+        ". . . .": SetModeAction("cal", 3, 0, Modes.calibration),
+        ". r": "scroll_up",
+        " r": "scroll_up",
+        ".l": "scroll_down",
         " ": "scroll_stop",
         ".": "scroll_stop",
     },

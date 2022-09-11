@@ -6,9 +6,11 @@ from PyQt5.QtWidgets import QApplication, QWidget
 from PyQt5.QtCore import QObject, pyqtSlot, Qt, QTimer, QPoint, QPointF, QMutex
 
 from settings import *
+from util import *
 from hotkey_thread import HotḱeyThread
-from gaze_thread import GazeThread
+from gaze_thread import *
 from gaze_filter import *
+from gaze_calibration import *
 from activation import *
 from gaze_pointer import GazePointer
 from label_grid import *
@@ -19,19 +21,6 @@ from tiles import *
 from graph import *
 
 
-# is set in App`s constructor
-screen_geometry = None
-
-gaze_filter = GazeFilter()
-
-
-def rel2abs(point):
-    return QPoint(
-        int(point.x() * screen_geometry.width()),
-        int(point.y() * screen_geometry.height()),
-    )
-
-
 class App(QObject):
     widget = None
     grid_widget = None
@@ -40,6 +29,7 @@ class App(QObject):
 
     activation = GridActivation()
     mode = Modes.enabled
+    previous_mode = None
     pause_lock = QMutex()
 
     scroll_timer = None
@@ -50,8 +40,7 @@ class App(QObject):
     def __init__(self):
         super().__init__()
 
-        global screen_geometry
-        screen_geometry = QApplication.primaryScreen().geometry()
+        set_screen_geometry(QApplication.primaryScreen().geometry())
 
         # self.click_timer = QTimer(self)
         # self.click_timer.timeout.connect(self.processMouse)
@@ -73,16 +62,20 @@ class App(QObject):
         # full screen has issues (https://doc.qt.io/qt-5/qwidget.html#showFullScreen)
         # self.widget.setWindowState(Qt.WindowFullScreen)
 
-        self.widget.setGeometry(screen_geometry)
+        self.widget.setGeometry(get_screen_geometry())
         self.widget.setFocusPolicy(Qt.NoFocus)
 
-        self.grid_widget = LabelGrid(self.widget, screen_geometry)
+        self.grid_widget = LabelGrid(self.widget, get_screen_geometry())
         self.grid_widget.hide()
         self.grid_widget.action_signal.connect(self.grid_action)
 
         self.status_widget = Status(self.widget, self.mode)
 
-        self.gaze_pointer = GazePointer(self.widget, rel2abs)
+        self.gaze_pointer = GazePointer(self.widget)
+
+        self.gaze_calibration = Calibration(self.widget, get_screen_geometry())
+        self.gaze_calibration.end_signal.connect(self.on_calibration_end)
+        self.gaze_filter = GazeFilter(self.gaze_calibration)
 
         self.set_mode(Modes.enabled)
 
@@ -93,12 +86,18 @@ class App(QObject):
         # self.graph.setup()
 
     def set_mode(self, mode):
+        if mode == Modes._previous:
+            mode = self.previous_mode
+            self.previous_mode = Modes.paused
+        self.previous_mode = self.mode
         self.mode = mode
         self.status_widget.set_mode(self.mode)
         self.scroll_timer.stop()
-        gaze_filter.set_blink_patterns(blink_commands[self.mode])
+        self.gaze_filter.set_blink_patterns(blink_commands[self.mode])
         if mode == Modes.grid:
             self.grid_widget.activate("left_eye")
+        elif mode == Modes.calibration:
+            self.gaze_calibration.start()
 
     def on_blink(self, blink, blink_position):
         if not blink:
@@ -134,9 +133,14 @@ class App(QObject):
             self.scroll_timer.start()
         elif command == "scroll_stop":
             self.scroll_timer.stop()
+        elif command == "calibration_next":
+            self.gaze_calibration.next_point()
+        elif command == "calibration_cancel":
+            self.gaze_calibration.cancel()
+            self.set_mode(Modes._previous)
 
-    @pyqtSlot(float, list, list, list, list)
-    def on_gaze(self, t, l0, l1, r0, r1):
+    @pyqtSlot(object)
+    def on_gaze(self, input_frame: InputFrame):
         callbacks = {
             Modes.enabled: {
                 "on_blink": [self.on_blink],
@@ -156,28 +160,37 @@ class App(QObject):
             Modes.scrolling: {
                 "on_blink": [self.on_blink],
             },
+            Modes.calibration: {
+                "on_frame": [self.gaze_calibration.on_frame],
+                "on_blink": [self.on_blink],
+            },
         }
         position_callback = callbacks[self.mode].get("on_position", [])
         blink_callback = callbacks[self.mode].get("on_blink", [])
         variance_callback = callbacks[self.mode].get("on_variance", [])
-        [x, y, flips, flip_position, l_variance, r_variance,] = gaze_filter.transform(
-            t,
-            l0,
-            l1,
-            r0,
-            r1,
+        frame_callback = callbacks[self.mode].get("on_frame", [])
+        filtered_frame = self.gaze_filter.transform(
+            input_frame,
             position=position_callback,
             blink=blink_callback,
             variance=variance_callback,
         )
         for callback in position_callback:
-            callback(x, y)
+            callback(
+                filtered_frame.screen_position[0], filtered_frame.screen_position[1]
+            )
         for callback in blink_callback:
-            callback(flips, flip_position)
+            callback(filtered_frame.flips, filtered_frame.flip_position)
         for callback in variance_callback:
-            callback(l_variance, r_variance)
+            callback(filtered_frame.l_variance, filtered_frame.r_variance)
+        for callback in frame_callback:
+            callback(filtered_frame)
         # self.graph.addPoint(t, l0, l1, r0, r1, x, y)
         # self.currPos = QPointF(x, y)
+
+    @pyqtSlot()
+    def on_calibration_end(self):
+        self.set_mode(Modes._previous)
 
     @pyqtSlot()
     def onHotkeyPressed(self):
