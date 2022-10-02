@@ -23,7 +23,9 @@ def slice(buffer, u, v=None):
     assert v == None
     assert u < 0
     return np.fromiter(
-        reversed(buffer), dtype=np.dtype((float, 2)), count=min(-u, len(buffer))
+        reversed(buffer),
+        dtype=np.dtype((float, len(buffer[0]))),
+        count=min(-u, len(buffer)),
     )
 
 

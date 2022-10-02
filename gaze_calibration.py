@@ -4,6 +4,7 @@
 
 
 from collections import deque
+from dataclasses import astuple
 from pathlib import Path
 import pickle
 
@@ -16,18 +17,22 @@ import numpy as np
 from util import *
 from gaze_filter import *
 
-screen_size_mm = (344.0, 193.0)
+screen_size_mm = vec(344.0, -193.0)
 
-x1 = 0.05
-x2 = 0.95
-y1 = 0.05
-y2 = 0.95
 calibration_points = [
-    vec(x1, y1),
-    vec(x2, y1),
-    vec(x1, y2),
-    vec(x2, y2),
+    vec(0.05, 0.05),
+    vec(0.95, 0.05),
+    vec(0.5, 0.95),
 ]
+
+
+@dataclass
+class CalibrationData:
+    T: np.ndarray = None
+    r3: np.ndarray = None
+
+    def __iter__(self):
+        return iter(astuple(self))
 
 
 class LookAtMe(QWidget):
@@ -56,74 +61,73 @@ class EyeMarker(QWidget):
 
 
 class EyeCalibration:
+    calibration_data: CalibrationData
+
     def __init__(self, parent, label, color):
         self.marker = EyeMarker(parent, color)
         self.marker.show()
         self.last_reference = None
         self.position_buffer = deque(maxlen=30)
-        self.corrections = []
+        self.measurements = []
 
         self.calibration_path = Path("~/.cache/eyeput", label).expanduser()
         self.calibration_path.parent.mkdir(exist_ok=True, parents=True)
         try:
             with self.calibration_path.open("rb") as file:
-                self.calibration_vector = pickle.load(file)
+                self.calibration_data = pickle.load(file)
         except FileNotFoundError as e:
-            self.calibration_vector = None
-
-    def add_calibration_point(self):
-        with self.calibration_path.open("wb") as file:
-            pickle.dump(self.calibration_vector, file, pickle.HIGHEST_PROTOCOL)
+            self.calibration_data = None
 
     def transform(self, t, v0, v1):
-        screen_position = vec(
-            v1[-1][0] / screen_size_mm[0] + 0.5,
-            -v1[-1][1] / screen_size_mm[1] + 1.0,
-        )
+        x = v1[-1][:2]
         # initial guess: project to zero plane
-        if self.calibration_vector is None:
-            return screen_position
-        # https://en.wikipedia.org/wiki/Bilinear_interpolation#Repeated_linear_interpolation
-        # https://en.wikipedia.org/wiki/Bilinear_interpolation#Weighted_mean
+        if self.calibration_data is None:
+            return x / screen_size_mm + vec(0.5, 1.0)
+        # https://en.wikipedia.org/wiki/Barycentric_coordinate_system#Edge_approach
         else:
-            x = vec(x2 - screen_position[0], screen_position[0] - x1)
-            y = vec(y2 - screen_position[1], screen_position[1] - y1)
-            # somehow the following line yields the wrong result:
-            # correction = x @ Q @ y
-            # weights take 8 instead of 6 multiplications but are easier to examine
-            weights = np.array((x[0] * y[0], x[0] * y[1], x[1] * y[0], x[1] * y[1]))
-            correction = weights @ self.calibration_vector
-            return screen_position + correction
+            T, r3 = self.calibration_data
+            l = np.zeros(3)
+            l[:2] = np.linalg.solve(T, x - r3)
+            l[2] = 1 - l[0] - l[1]
+            return l @ calibration_points
 
     def start(self):
-        self.corrections.clear()
+        self.measurements.clear()
         self.position_buffer.clear()
 
     def next(self):
-        self.corrections.append(self.correction)
+        self.measurements.append(self.measurement)
         self.position_buffer.clear()
 
     def finalize(self):
         self.next()
-        self.calibration_vector = np.array(self.corrections) / (x2 - x1) / (y2 - y1)
+        r = self.measurements
+        self.calibration_data = CalibrationData(
+            np.array([r[0] - r[2], r[1] - r[2]]),
+            r[2],
+        )
+        with self.calibration_path.open("wb") as file:
+            pickle.dump(self.calibration_data, file, pickle.HIGHEST_PROTOCOL)
 
-    def on_gaze(self, reference, screen_position, take, test, radius):
-        # calculate new correction
-        self.position_buffer.append(screen_position)
-        mean = np.mean(slice(self.position_buffer, -take), axis=0)
-        self.correction = reference - mean
+    def on_gaze(self, reference, gaze_position, take, test, radius_mm):
+        gaze_position_2d = gaze_position[:2]
+
+        # calculate new mean
+        self.position_buffer.append(gaze_position_2d)
+        self.measurement = np.mean(slice(self.position_buffer, -take), axis=0)
         distance = np.linalg.norm(
-            slice(self.position_buffer, -(take + test)) + self.correction - reference,
+            slice(self.position_buffer, -(take + test)) - self.measurement,
             axis=1,
         )
 
         # decide whether this reference point has completed
         self.is_ok = len(self.position_buffer) >= take + test and np.all(
-            distance < radius
+            distance < radius_mm
         )
 
-        # visualize current corrected position
-        self.marker.move(rel2abs(screen_position + self.correction))
+        # visualize current deviation
+        deviation = (self.measurement - gaze_position_2d) / screen_size_mm
+        self.marker.move(rel2abs(reference + deviation))
 
 
 class Calibration(QWidget):
@@ -176,8 +180,8 @@ class Calibration(QWidget):
     def on_frame(self, frame: FilteredFrame):
         if self.isVisible():
             reference = calibration_points[self.counter]
-            self.left.on_gaze(reference, frame.l_screen_position, 15, 5, 0.02)
-            self.right.on_gaze(reference, frame.r_screen_position, 15, 5, 0.02)
+            self.left.on_gaze(reference, frame.l1, 15, 5, 12)
+            self.right.on_gaze(reference, frame.r1, 15, 5, 12)
             # proceed with next point
             if self.left.is_ok and self.right.is_ok:
                 self.finalize_point()
