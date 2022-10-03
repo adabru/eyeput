@@ -7,7 +7,7 @@ from settings import *
 
 
 @dataclass
-class _Action:
+class Action:
     label: str
     img: str
     x: int
@@ -15,27 +15,27 @@ class _Action:
 
 
 @dataclass
-class InternalAction(_Action):
+class InternalAction(Action):
     pass
 
 
 @dataclass
-class SetModeAction(_Action):
+class SetModeAction(Action):
     mode: str
 
 
 @dataclass
-class MouseAction(_Action):
+class MouseAction(Action):
     id: str
 
 
 @dataclass
-class OtherAction(_Action):
+class BlinkAction(Action):
     id: str
 
 
 @dataclass
-class KeyAction(_Action):
+class KeyAction(Action):
     pressKey: str = None
 
     def key(self):
@@ -43,8 +43,13 @@ class KeyAction(_Action):
 
 
 @dataclass
-class CmdAction(_Action):
+class CmdAction(Action):
     cmd: str = None
+
+
+@dataclass
+class GridLayerAction(Action):
+    layer: str = None
 
 
 tiles = {
@@ -137,8 +142,8 @@ tiles = {
         "enter": KeyAction("↲", None, 9, 5, "enter"),
         "slash": KeyAction("/", None, 10, 5, "shift+7"),
         "hold": InternalAction("∞", None, 11, 5),
-        "keyboard2": InternalAction("➁", None, 12, 5),
-        "textCmds": InternalAction("➂", None, 13, 5),
+        "keyboard2": GridLayerAction("➁", None, 12, 5, "keyboard2"),
+        "textCmds": GridLayerAction("➂", None, 13, 5, "textCmds"),
     },
     "keyboard2": {
         # row 0
@@ -152,7 +157,7 @@ tiles = {
         "amp": KeyAction("&", None, 0, 1, "shift+6"),
         "perc": KeyAction("%", None, 1, 1, "shift+5"),
         "exclamation": KeyAction("!", None, 2, 1, "shift+1"),
-        "doublequote": KeyAction('"', 3, 1, "shift+2"),
+        "doublequote": KeyAction('"', None, 3, 1, "shift+2"),
         "singlequote": KeyAction("'", None, 4, 1, "shift+numbersign"),
         "backtick": KeyAction("`", None, 5, 1),
         "dollar": KeyAction("$", None, 6, 1, "shift+4"),
@@ -196,8 +201,8 @@ tiles = {
         "F12": KeyAction("F12", None, 11, 4),
         # row 5
         "hold": InternalAction("∞", None, 11, 5),
-        "keyboard1": InternalAction("➀", None, 12, 5),
-        "textCmds": InternalAction("➂", None, 13, 5),
+        "keyboard1": GridLayerAction("➀", None, 12, 5, "keyboard1"),
+        "textCmds": GridLayerAction("➂", None, 13, 5, "textCmds"),
     },
     "textCmds": {
         # row 0
@@ -210,8 +215,8 @@ tiles = {
         # row 4
         # row 5
         "hold": InternalAction("∞", None, 11, 5),
-        "keyboard1": InternalAction("➀", None, 12, 5),
-        "keyboard2": InternalAction("➁", None, 13, 5),
+        "keyboard1": GridLayerAction("➀", None, 12, 5, "keyboard1"),
+        "keyboard2": GridLayerAction("➁", None, 13, 5, "keyboard2"),
     },
     "apps": {
         # row 0
@@ -260,7 +265,7 @@ tiles = {
             "xdg-open https://github.com/adabru &",
         ),
     },
-    "left_eye": {
+    "eye_modes": {
         # row 0
         "scroll_mode": SetModeAction("↕", None, 0, 0, Modes.scrolling),
         "click_mode": SetModeAction("🖰", None, 1, 0, Modes.enabled),
@@ -282,39 +287,41 @@ class Zone:
         )
 
 
-Zone.tl = Zone((-0.1, -0.1), (0.5, 0.5))
+Zone.tl = Zone((-0.1, -0.1), (0.3, 0.3))
+Zone.c = Zone((0.3, 0.3), (0.6, 0.6))
 Zone.inside = Zone((-0.1, -0.1), (1.1, 1.1))
 Zone.any = Zone((-100.0, -100.0), (100.0, 100.0))
 
 blink_commands = {
     Modes.enabled: {
         (". . . .", Zone.any): SetModeAction("cal", None, 3, 0, Modes.calibration),
-        (".r", Zone.tl): SetModeAction("", None, 0, 0, Modes.grid),
+        (".r", Zone.tl): GridLayerAction("", None, 0, 0, "eye_modes"),
         # ". .": "mouse_move",
-        (".l", Zone.inside): "mouse_start_move",
+        (".l", Zone.inside): BlinkAction("", None, 0, 0, "mouse_start_move"),
         # ".r.": "left_click",
     },
     Modes.cursor: {
-        (".", Zone.any): "mouse_stop_move",
+        (".", Zone.any): BlinkAction("", None, 0, 0, "mouse_stop_move"),
     },
     Modes.grid: {
         (" ", Zone.any): SetModeAction("", None, 0, 0, Modes._previous),
     },
     Modes.calibration: {
-        (". . .", Zone.any): "calibration_cancel",
-        (". .", Zone.any): "calibration_next",
+        (". . .", Zone.any): BlinkAction("", None, 0, 0, "calibration_cancel"),
+        (". .", Zone.any): BlinkAction("", None, 0, 0, "calibration_next"),
     },
     Modes.paused: {
-        (".r", Zone.tl): SetModeAction("", None, 0, 0, Modes.grid),
+        (".r", Zone.tl): GridLayerAction("", None, 0, 0, "eye_modes"),
         (". . . .", Zone.any): SetModeAction("cal", None, 3, 0, Modes.calibration),
     },
     Modes.scrolling: {
-        (".r", Zone.tl): SetModeAction("", None, 0, 0, Modes.grid),
         (". . . .", Zone.any): SetModeAction("cal", None, 3, 0, Modes.calibration),
-        (". r", Zone.inside): "scroll_up",
-        (" r", Zone.inside): "scroll_up",
-        (".l", Zone.inside): "scroll_down",
-        (" ", Zone.any): "scroll_stop",
-        (".", Zone.any): "scroll_stop",
+        (".r", Zone.c): GridLayerAction("", None, 0, 0, "keyboard1"),
+        (".r", Zone.tl): GridLayerAction("", None, 0, 0, "eye_modes"),
+        (". r", Zone.inside): BlinkAction("", None, 0, 0, "scroll_up"),
+        (" r", Zone.inside): BlinkAction("", None, 0, 0, "scroll_up"),
+        (".l", Zone.inside): BlinkAction("", None, 0, 0, "scroll_down"),
+        (" ", Zone.any): BlinkAction("", None, 0, 0, "scroll_stop"),
+        (".", Zone.any): BlinkAction("", None, 0, 0, "scroll_stop"),
     },
 }

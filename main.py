@@ -67,7 +67,7 @@ class App(QObject):
 
         self.grid_widget = LabelGrid(self.widget, get_screen_geometry())
         self.grid_widget.hide()
-        self.grid_widget.action_signal.connect(self.grid_action)
+        self.grid_widget.action_signal.connect(self.on_action)
 
         self.status_widget = Status(self.widget, self.mode)
 
@@ -89,14 +89,13 @@ class App(QObject):
         if mode == Modes._previous:
             mode = self.previous_mode
             self.previous_mode = Modes.paused
-        self.previous_mode = self.mode
+        else:
+            self.previous_mode = self.mode
         self.mode = mode
         self.status_widget.set_mode(self.mode)
         self.scroll_timer.stop()
         self.gaze_filter.set_blink_patterns(blink_commands[self.mode])
-        if mode == Modes.grid:
-            self.grid_widget.activate("left_eye")
-        elif mode == Modes.calibration:
+        if mode == Modes.calibration:
             self.gaze_calibration.start()
 
     def on_blink(self, blink, blink_position):
@@ -104,40 +103,7 @@ class App(QObject):
             return
         assert blink in blink_commands[self.mode], self.mode + " " + blink
         command = blink_commands[self.mode][blink]
-        if isinstance(command, SetModeAction):
-            self.set_mode(command.mode)
-            if command.mode != Modes.grid:
-                self.grid_widget.activate("_hide")
-        # elif id == "mouse_move":
-        #     position = rel2abs(QPointF(blink_position[0], blink_position[1]))
-        #     external.mouse_move(position.x(), position.y())
-        #     self.gaze_pointer.on_gaze(position)
-        elif command == "mouse_start_move":
-            self.gaze_pointer.start_move(blink_position[0], blink_position[1])
-            self.set_mode(Modes.cursor)
-        elif command == "mouse_stop_move":
-            target_position = self.gaze_pointer.stop_move(
-                blink_position[0], blink_position[1]
-            )
-            self.set_mode(Modes.enabled)
-            external.mouse_move(target_position.x(), target_position.y())
-        elif command == "left_click":
-            external.left_click()
-        elif command == "right_click":
-            external.right_click()
-        elif command == "scroll_up":
-            self.scroll_direction = 1
-            self.scroll_timer.start()
-        elif command == "scroll_down":
-            self.scroll_direction = -1
-            self.scroll_timer.start()
-        elif command == "scroll_stop":
-            self.scroll_timer.stop()
-        elif command == "calibration_next":
-            self.gaze_calibration.next_point()
-        elif command == "calibration_cancel":
-            self.gaze_calibration.cancel()
-            self.set_mode(Modes._previous)
+        self.on_action(command, blink_position, True)
 
     @pyqtSlot(object)
     def on_gaze(self, input_frame: InputFrame):
@@ -204,22 +170,62 @@ class App(QObject):
         self.grid_widget.activate(label)
 
     @pyqtSlot(object, object, bool)
-    def grid_action(self, item, params, hide):
-        if isinstance(item, KeyAction):
+    def on_action(self, item: Action, params, hide_grid):
+        # grid actions
+        if type(item) is KeyAction:
             modifiers = params
             external.press_key("+".join(list(modifiers) + [item.key()]))
-        elif isinstance(item, MouseAction) and item.id == "left_click_delayed":
+        elif type(item) is MouseAction and item.id == "left_click_delayed":
             self.click_timer.setInterval(int(Times.click * 1000))
             self.click_timer.start()
             self.mouseMoveTime = time.time()
-        elif isinstance(item, CmdAction):
+        elif type(item) is CmdAction:
             external.exec(item.cmd)
-        elif isinstance(item, SetModeAction):
+
+        # shared actions
+        elif type(item) is GridLayerAction:
+            self.set_mode(Modes.grid)
+            self.grid_widget.activate(item.layer)
+            hide_grid = False
+        elif type(item) is SetModeAction:
             self.set_mode(item.mode)
 
-        if hide:
-            QTimer.singleShot(50, lambda: self.grid_widget.activate("_hide"))
-            # self.activation.go_idle()
+        # blink actions
+        elif type(item) is BlinkAction:
+            blink_position = params
+            # elif id == "mouse_move":
+            #     position = rel2abs(blink_position)
+            #     external.mouse_move(position.x(), position.y())
+            #     self.gaze_pointer.on_gaze(position)
+            if item.id == "mouse_start_move":
+                self.gaze_pointer.start_move(blink_position[0], blink_position[1])
+                self.set_mode(Modes.cursor)
+            elif item.id == "mouse_stop_move":
+                target_position = self.gaze_pointer.stop_move(
+                    blink_position[0], blink_position[1]
+                )
+                self.set_mode(Modes.enabled)
+                external.mouse_move(target_position.x(), target_position.y())
+            elif item.id == "left_click":
+                external.left_click()
+            elif item.id == "right_click":
+                external.right_click()
+            elif item.id == "scroll_up":
+                self.scroll_direction = 1
+                self.scroll_timer.start()
+            elif item.id == "scroll_down":
+                self.scroll_direction = -1
+                self.scroll_timer.start()
+            elif item.id == "scroll_stop":
+                self.scroll_timer.stop()
+            elif item.id == "calibration_next":
+                self.gaze_calibration.next_point()
+            elif item.id == "calibration_cancel":
+                self.gaze_calibration.cancel()
+                self.set_mode(Modes._previous)
+
+        if hide_grid:
+            self.grid_widget.hide_delayed()
 
     @pyqtSlot()
     def scroll_step(self):

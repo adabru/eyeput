@@ -17,13 +17,16 @@ class LabelGrid(QWidget):
     state = GridState()
     labels = {}
     hover_item = None
-    hover_timer = None
     action_signal = pyqtSignal(object, object, bool)
 
     def __init__(self, parent, geometry):
         super().__init__(parent)
         self.setGeometry(geometry)
         self.setFocusPolicy(Qt.NoFocus)
+
+        self.hide_timer = QTimer(self)
+        self.hide_timer.timeout.connect(lambda: self.activate("_hide"))
+        self.hide_timer.setSingleShot(True)
 
         self.hover_timer = QTimer(self)
         self.hover_timer.timeout.connect(self.select_item)
@@ -43,7 +46,7 @@ class LabelGrid(QWidget):
 
     def activate(self, label):
         if label != "_hide":
-            self.set_level(label)
+            self.set_layer(label)
             if not self.isVisible():
                 self.show()
         elif self.isVisible():
@@ -53,7 +56,11 @@ class LabelGrid(QWidget):
             self.hover_timer.stop()
             self.hide()
 
-    def set_level(self, levelId):
+    def hide_delayed(self):
+        if self.isVisible() and not self.hide_timer.isActive():
+            self.hide_timer.start(50)
+
+    def set_layer(self, levelId):
         self.state.lvl = levelId
         self.update_grid()
 
@@ -124,9 +131,6 @@ class LabelGrid(QWidget):
             self.state.hold = not self.state.hold
             self.update_grid()
 
-        elif self.hover_item.id in tiles:
-            self.set_level(self.hover_item.id)
-
         elif self.hover_item.id in modifierColors:
             if self.hover_item.id in self.state.modifiers:
                 self.state.modifiers.remove(self.hover_item.id)
@@ -134,7 +138,7 @@ class LabelGrid(QWidget):
                 self.state.modifiers.add(self.hover_item.id)
             self.update_grid()
 
-        elif isinstance(self.hover_item.item, KeyAction):
+        elif type(self.hover_item.item) is KeyAction:
             self.action_signal.emit(
                 self.hover_item.item, self.state.modifiers, not self.state.hold
             )
