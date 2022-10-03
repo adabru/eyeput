@@ -27,6 +27,7 @@ class BlinkFilter:
     flips = "."
     flip_times = [0]
     prefix_tree = {}
+    blink_zones = {}
 
     def decode(self, pattern):
         return {
@@ -45,14 +46,13 @@ class BlinkFilter:
         }[(pair["l"], pair["r"])]
 
     def set_blink_patterns(self, blink_patterns):
-        # build prefix tree
+        # build prefix tree and zone dictionary
         self.prefix_tree = {}
-        for p in blink_patterns:
+        self.blink_zones = {}
+        for p, zone in blink_patterns:
+            self.blink_zones.setdefault(p, set()).add(zone)
             for i in range(1, len(p) + 1):
-                if not p[:i] in self.prefix_tree:
-                    self.prefix_tree[p[:i]] = {p}
-                else:
-                    self.prefix_tree[p[:i]].add(p)
+                self.prefix_tree.setdefault(p[:i], set()).add(p)
 
     def check_flip(self, t, buffer, eye):
         current_flip = self.decode(self.flips[-1])
@@ -72,7 +72,23 @@ class BlinkFilter:
                 self.flips += self.encode(current_flip)
                 self.flip_times.append(t[-2])
 
-    def transform(self, t, left, right):
+    def checked_position(self, t, flips, flip_time, filtered_position):
+        # take position at the time of blinking
+        flip_position = None
+        for (_t, _position) in zip(reversed(t), reversed(filtered_position)):
+            if _t < flip_time - 0.05:
+                flip_position = _position
+                break
+        if flip_position is None:
+            return (None, None)
+
+        # return first blink zone that matches
+        for zone in self.blink_zones[flips]:
+            if flip_position in zone:
+                return ((flips, zone), flip_position)
+        return (None, None)
+
+    def transform(self, t, left, right, filtered_position):
         # recognize flip
         self.check_flip(t, left, "l")
         self.check_flip(t, right, "r")
@@ -86,11 +102,13 @@ class BlinkFilter:
             and (dt > self.latency or len(self.prefix_tree[self.flips]) == 1)
         ):
             if len(self.flips) == 1:
-                return (self.flips, self.flip_times[0])
-            result = (self.flips, self.flip_times[1])
+                return self.checked_position(
+                    t, self.flips, self.flip_times[0], filtered_position
+                )
+            flips, flip_time = (self.flips, self.flip_times[1])
             self.flips = self.flips[-1:]
             self.flip_times = self.flip_times[-1:]
-            return result
+            return self.checked_position(t, flips, flip_time, filtered_position)
         # preemptively cancel unregistered blink and timed out blink
         if not self.flips in self.prefix_tree or dt > self.latency:
             self.flips = self.flips[-1:]
@@ -268,16 +286,9 @@ class GazeFilter:
                 self.t, self.left, self.right
             )
         if blink:
-            (frame.flips, flip_time) = self.blink_filter.transform(
-                self.t, self.left, self.right
+            (frame.flips, frame.flip_position) = self.blink_filter.transform(
+                self.t, self.left, self.right, self.filtered_position
             )
-            if flip_time:
-                for (_t, _position) in zip(
-                    reversed(self.t), reversed(self.filtered_position)
-                ):
-                    if _t < flip_time - 0.05:
-                        frame.flip_position = _position
-                        break
 
         # import timeit
         # _time = lambda n, f: print(timeit.timeit(f, number=n))

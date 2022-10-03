@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import os.path
 
-from PyQt5.QtCore import QRectF
+from PyQt5.QtCore import QRectF, QPointF
 
 from settings import *
 
@@ -269,36 +269,52 @@ tiles = {
     },
 }
 
+
+@dataclass(frozen=True)
+class Zone:
+    top_left: tuple[float, float]
+    bottom_right: tuple[float, float]
+
+    def __contains__(self, point):
+        return (
+            self.top_left[0] <= point[0] <= self.bottom_right[0]
+            and self.top_left[1] <= point[1] <= self.bottom_right[1]
+        )
+
+
+Zone.tl = Zone((-0.1, -0.1), (0.5, 0.5))
+Zone.inside = Zone((-0.1, -0.1), (1.1, 1.1))
+Zone.any = Zone((-100.0, -100.0), (100.0, 100.0))
+
 blink_commands = {
     Modes.enabled: {
-        ". r .": SetModeAction("", None, 0, 0, Modes.paused),
-        ". . . .": SetModeAction("cal", None, 3, 0, Modes.calibration),
-        ".r": SetModeAction("", None, 0, 0, Modes.grid),
+        (". . . .", Zone.any): SetModeAction("cal", None, 3, 0, Modes.calibration),
+        (".r", Zone.tl): SetModeAction("", None, 0, 0, Modes.grid),
         # ". .": "mouse_move",
-        ".l": "mouse_start_move",
+        (".l", Zone.inside): "mouse_start_move",
         # ".r.": "left_click",
     },
     Modes.cursor: {
-        ".": "mouse_stop_move",
+        (".", Zone.any): "mouse_stop_move",
     },
     Modes.grid: {
-        " ": SetModeAction("", None, 0, 0, Modes._previous),
+        (" ", Zone.any): SetModeAction("", None, 0, 0, Modes._previous),
     },
     Modes.calibration: {
-        ". . .": "calibration_cancel",
-        ". .": "calibration_next",
+        (". . .", Zone.any): "calibration_cancel",
+        (". .", Zone.any): "calibration_next",
     },
     Modes.paused: {
-        ".r": SetModeAction("", None, 0, 0, Modes.grid),
-        ". . . .": SetModeAction("cal", None, 3, 0, Modes.calibration),
+        (".r", Zone.tl): SetModeAction("", None, 0, 0, Modes.grid),
+        (". . . .", Zone.any): SetModeAction("cal", None, 3, 0, Modes.calibration),
     },
     Modes.scrolling: {
-        ".r": SetModeAction("", None, 0, 0, Modes.grid),
-        ". . . .": SetModeAction("cal", None, 3, 0, Modes.calibration),
-        ". r": "scroll_up",
-        " r": "scroll_up",
-        ".l": "scroll_down",
-        " ": "scroll_stop",
-        ".": "scroll_stop",
+        (".r", Zone.tl): SetModeAction("", None, 0, 0, Modes.grid),
+        (". . . .", Zone.any): SetModeAction("cal", None, 3, 0, Modes.calibration),
+        (". r", Zone.inside): "scroll_up",
+        (" r", Zone.inside): "scroll_up",
+        (".l", Zone.inside): "scroll_down",
+        (" ", Zone.any): "scroll_stop",
+        (".", Zone.any): "scroll_stop",
     },
 }
