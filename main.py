@@ -207,7 +207,7 @@ class App(QObject):
     def grid_action(self, item, params, hide):
         if isinstance(item, KeyAction):
             modifiers = params
-            external.press_key("+".join(list(modifiers) + [item.pressKey]))
+            external.press_key("+".join(list(modifiers) + [item.key()]))
         elif isinstance(item, MouseAction) and item.id == "left_click_delayed":
             self.click_timer.setInterval(int(Times.click * 1000))
             self.click_timer.start()
