@@ -40,15 +40,27 @@ class CalibrationData:
 
 
 class LookAtMe(QWidget):
-    def __init__(self, parent):
+    def __init__(self, parent, points):
         super().__init__(parent)
-        self.setGeometry(0, 0, 10, 10)
+        self.points = points
+        self.setGeometry(parent.geometry())
         self.hide()
+        self.index = -1
+
+    def highlight(self, index):
+        self.index = index
+        self.update()
 
     def paintEvent(self, event):
         painter = QPainter(self)
-        painter.setBrush(QColor(255, 255, 0, 255))
-        painter.drawRect(QRect(0, 0, 20, 20))
+        painter.setBrush(QColor(100, 100, 100, 255))
+        for point in self.points:
+            position = rel2abs(point)
+            painter.drawRect(position.x() - 5, position.y() - 5, 10, 10)
+        if 0 <= self.index < len(self.points):
+            painter.setBrush(QColor(255, 255, 0, 255))
+            position = rel2abs(self.points[self.index])
+            painter.drawRect(position.x() - 5, position.y() - 5, 10, 10)
 
 
 class EyeMarker(QWidget):
@@ -67,12 +79,12 @@ class EyeMarker(QWidget):
 class EyeCalibration:
     calibration_data: CalibrationData
 
-    def __init__(self, parent, label, color):
+    def __init__(self, parent, label, color, references):
         self.marker = EyeMarker(parent, color)
         self.marker.show()
-        self.last_reference = None
         self.position_buffer = deque(maxlen=30)
-        self.measurements = []
+        self.measurements = np.zeros((len(references), 2))
+        self.index = -1
 
         self.calibration_path = Path("~/.cache/eyeput", label).expanduser()
         self.calibration_path.parent.mkdir(exist_ok=True, parents=True)
@@ -104,16 +116,16 @@ class EyeCalibration:
             # )
             return screen_position
 
-    def start(self):
-        self.measurements.clear()
-        self.position_buffer.clear()
-
-    def next(self):
-        self.measurements.append(self.measurement)
-        self.position_buffer.clear()
+    def next(self, index):
+        if index == -1:
+            self.marker.hide()
+        else:
+            self.index = index
+            self.measurements[index].fill(0.0)
+            self.position_buffer.clear()
+            self.marker.show()
 
     def finalize(self):
-        self.next()
         r = self.measurements
         self.calibration_data = CalibrationData(
             T=np.array([r[0] - r[2], r[1] - r[2]]),
@@ -129,9 +141,11 @@ class EyeCalibration:
 
         # calculate new mean
         self.position_buffer.append(gaze_position_2d)
-        self.measurement = np.mean(slice(self.position_buffer, -take), axis=0)
+        self.measurements[self.index] = np.mean(
+            slice(self.position_buffer, -take), axis=0
+        )
         distance = np.linalg.norm(
-            slice(self.position_buffer, -(take + test)) - self.measurement,
+            slice(self.position_buffer, -(take + test)) - self.measurements[self.index],
             axis=1,
         )
 
@@ -141,7 +155,7 @@ class EyeCalibration:
         )
 
         # visualize current deviation
-        deviation = (self.measurement - gaze_position_2d) / screen_size_mm
+        deviation = (self.measurements[self.index] - gaze_position_2d) / screen_size_mm
         self.marker.move(rel2abs(reference + deviation))
 
 
@@ -151,10 +165,11 @@ class Calibration(QWidget):
     def __init__(self, parent, geometry):
         super().__init__(parent)
         self.setGeometry(geometry)
-        self.lookatme = LookAtMe(self)
+        self.lookatme = LookAtMe(self, calibration_points)
+        self.paused = True
         self.lookatme.show()
-        self.left = EyeCalibration(self, "left", QColor("lime"))
-        self.right = EyeCalibration(self, "right", QColor("red"))
+        self.left = EyeCalibration(self, "left", QColor("lime"), calibration_points)
+        self.right = EyeCalibration(self, "right", QColor("red"), calibration_points)
         self.hide()
 
     def get(self, label):
@@ -164,23 +179,24 @@ class Calibration(QWidget):
             return self.right
 
     def start(self):
-        self.counter = 0
+        self.counter = -1
         self.show()
-        self.left.start()
-        self.right.start()
-        position = rel2abs(calibration_points[self.counter])
-        self.lookatme.move(position)
+        self.left.next(self.counter)
+        self.right.next(self.counter)
+        self.lookatme.highlight(self.counter)
+        self.paused = True
 
     def next_point(self):
         self.show()
         self.counter += 1
-        position = rel2abs(calibration_points[self.counter])
-        self.lookatme.move(position)
-        self.left.next()
-        self.right.next()
+        self.lookatme.highlight(self.counter)
+        self.left.next(self.counter)
+        self.right.next(self.counter)
+        self.paused = False
 
     def finalize_point(self):
-        self.hide()
+        self.lookatme.highlight(-1)
+        self.paused = True
         if self.counter == len(calibration_points) - 1:
             self.finalize()
 
@@ -191,9 +207,10 @@ class Calibration(QWidget):
         self.end_signal.emit()
         self.left.finalize()
         self.right.finalize()
+        self.hide()
 
     def on_frame(self, frame: FilteredFrame):
-        if self.isVisible():
+        if self.isVisible() and not self.paused:
             reference = calibration_points[self.counter]
             self.left.on_gaze(reference, frame.l1, 15, 5, 12)
             self.right.on_gaze(reference, frame.r1, 15, 5, 12)

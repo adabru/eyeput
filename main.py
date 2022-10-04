@@ -89,7 +89,7 @@ class App(QObject):
         if mode == Modes._previous:
             mode = self.previous_mode
             self.previous_mode = Modes.paused
-        else:
+        elif self.previous_mode != self.mode:
             self.previous_mode = self.mode
         self.mode = mode
         self.status_widget.set_mode(self.mode)

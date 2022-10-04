@@ -288,6 +288,7 @@ class Zone:
 
 
 Zone.tl = Zone((-0.1, -0.1), (0.3, 0.3))
+Zone.tr = Zone((0.7, -0.1), (1.1, 0.3))
 Zone.c = Zone((0.3, 0.3), (0.6, 0.6))
 Zone.inside = Zone((-0.1, -0.1), (1.1, 1.1))
 Zone.any = Zone((-100.0, -100.0), (100.0, 100.0))
@@ -295,9 +296,11 @@ Zone.any = Zone((-100.0, -100.0), (100.0, 100.0))
 blink_commands = {
     Modes.enabled: {
         (". . . .", Zone.any): SetModeAction("cal", None, 3, 0, Modes.calibration),
+        (".r", Zone.c): GridLayerAction("", None, 0, 0, "keyboard1"),
+        (".r", Zone.tr): GridLayerAction("", None, 0, 0, "keyboard2"),
         (".r", Zone.tl): GridLayerAction("", None, 0, 0, "eye_modes"),
-        # ". .": "mouse_move",
         (".l", Zone.inside): BlinkAction("", None, 0, 0, "mouse_start_move"),
+        # ". .": "mouse_move",
         # ".r.": "left_click",
     },
     Modes.cursor: {
@@ -319,6 +322,7 @@ blink_commands = {
     Modes.scrolling: {
         (". . . .", Zone.any): SetModeAction("cal", None, 3, 0, Modes.calibration),
         (".r", Zone.c): GridLayerAction("", None, 0, 0, "keyboard1"),
+        (".r", Zone.tr): GridLayerAction("", None, 0, 0, "keyboard2"),
         (".r", Zone.tl): GridLayerAction("", None, 0, 0, "eye_modes"),
         (". r", Zone.inside): BlinkAction("", None, 0, 0, "scroll_up"),
         (" r", Zone.inside): BlinkAction("", None, 0, 0, "scroll_up"),
