@@ -1,8 +1,8 @@
 import psutil
 
-from PyQt5.QtWidgets import QLabel, QWidget
-from PyQt5.QtGui import QFont, QColor, QPainter, QPixmap
-from PyQt5.QtCore import Qt, QPoint, QRect, QTimer, pyqtSlot
+from PySide2.QtWidgets import QLabel, QWidget
+from PySide2.QtGui import QFont, QColor, QPainter, QPixmap
+from PySide2.QtCore import Qt, QPoint, QRect, QTimer, Slot
 
 from settings import *
 
@@ -25,7 +25,7 @@ class Status(QWidget):
     def _lerp(self, x, y, a):
         return int(a * y + (1 - a) * x)
 
-    @pyqtSlot()
+    @Slot()
     def update_stats(self):
         self.update()
         self.stats = "{:.0f}%".format(self.current_process.cpu_percent())

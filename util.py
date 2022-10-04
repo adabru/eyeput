@@ -1,7 +1,7 @@
 import timeit
 
-from PyQt5.QtWidgets import QWidget
-from PyQt5.QtCore import QPoint, QPointF
+from PySide2.QtWidgets import QWidget
+from PySide2.QtCore import QPoint, QPointF
 
 import numpy as np
 

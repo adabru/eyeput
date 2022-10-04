@@ -2,8 +2,8 @@
 
 import sys, signal, time
 
-from PyQt5.QtWidgets import QApplication, QWidget
-from PyQt5.QtCore import QObject, pyqtSlot, Qt, QTimer, QPoint, QPointF, QMutex
+from PySide2.QtWidgets import QApplication, QWidget
+from PySide2.QtCore import QObject, Slot, Qt, QTimer, QPoint, QPointF, QMutex
 
 from settings import *
 from util import *
@@ -105,7 +105,7 @@ class App(QObject):
         command = blink_commands[self.mode][blink]
         self.on_action(command, blink_position, True)
 
-    @pyqtSlot(object)
+    @Slot(object)
     def on_gaze(self, input_frame: InputFrame):
         callbacks = {
             Modes.enabled: {
@@ -154,22 +154,22 @@ class App(QObject):
         # self.graph.addPoint(t, l0, l1, r0, r1, x, y)
         # self.currPos = QPointF(x, y)
 
-    @pyqtSlot()
+    @Slot()
     def on_calibration_end(self):
         self.set_mode(Modes._previous)
 
-    @pyqtSlot()
+    @Slot()
     def onHotkeyPressed(self):
         self.activation.hotkeyTriggered()
         self.grid_widget.on_gaze(
             self.currPos.x(), self.currPos.y(), after_activation=True
         )
 
-    @pyqtSlot(str)
+    @Slot(str)
     def activation_changed(self, label):
         self.grid_widget.activate(label)
 
-    @pyqtSlot(object, object, bool)
+    @Slot(object, object, bool)
     def on_action(self, item: Action, params, hide_grid):
         # grid actions
         if type(item) is KeyAction:
@@ -236,11 +236,11 @@ class App(QObject):
         if hide_grid:
             self.grid_widget.hide_delayed()
 
-    @pyqtSlot()
+    @Slot()
     def scroll_step(self):
         external.scroll(self.scroll_direction)
 
-    # @pyqtSlot()
+    # @Slot()
     # def processMouse(self):
     #     dist = rel2abs(self.currPos - self.lastPos).manhattanLength()
 

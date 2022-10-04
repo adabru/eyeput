@@ -7,9 +7,9 @@ from collections import deque
 from pathlib import Path
 import pickle
 
-from PyQt5.QtWidgets import QWidget
-from PyQt5.QtGui import QPainter, QPixmap, QColor
-from PyQt5.QtCore import Qt, QPoint, QPointF, QRect, QTimer, pyqtSignal
+from PySide2.QtWidgets import QWidget
+from PySide2.QtGui import QPainter, QPixmap, QColor
+from PySide2.QtCore import Qt, QPoint, QPointF, QRect, QTimer, Signal
 
 import numpy as np
 
@@ -146,7 +146,7 @@ class EyeCalibration:
 
 
 class Calibration(QWidget):
-    end_signal = pyqtSignal()
+    end_signal = Signal()
 
     def __init__(self, parent, geometry):
         super().__init__(parent)

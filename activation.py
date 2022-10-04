@@ -1,5 +1,5 @@
 from enum import Enum
-from PyQt5.QtCore import pyqtSignal, QTimer, QObject, QRectF
+from PySide2.QtCore import Signal, QTimer, QObject, QRectF
 
 from logger import *
 from settings import *
@@ -46,7 +46,7 @@ class GridActivation(QObject):
 
     deactivate_timer = None
 
-    activate_grid_signal = pyqtSignal(str)
+    activate_grid_signal = Signal(str)
 
     def __init__(self):
         super().__init__()

@@ -4,7 +4,7 @@
 
 import numpy as np
 import pyqtgraph as pg
-from PyQt5.QtCore import Qt, QObject, pyqtSlot, pyqtSignal
+from PySide2.QtCore import Qt, QObject, Slot, Signal
 
 from settings import *
 
@@ -33,7 +33,7 @@ class PixelRange:
 
 
 class Graph(QObject):
-    gaze_signal = pyqtSignal(float, float, float, float, float, float, float)
+    gaze_signal = Signal(float, float, float, float, float, float, float)
 
     def __init__(self):
         super().__init__()
@@ -130,7 +130,7 @@ class Graph(QObject):
         # self._update_spectrum("x")
 
     # must be called in qt thread to prevent concurrent data manipulation (setData)
-    @pyqtSlot(float, float, float, float, float, float, float)
+    @Slot(float, float, float, float, float, float, float)
     def addPoint(self, t, l0, l1, r0, r1, x, y):
         # skip invalid points
         # if l0 == 0.0 and l1 == 0.0:

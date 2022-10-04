@@ -1,5 +1,5 @@
-from PyQt5.QtGui import QColor
-from PyQt5.QtCore import QMarginsF
+from PySide2.QtGui import QColor
+from PySide2.QtCore import QMarginsF
 
 # DEFAULT: True - can be deactivated when debugging
 activate_keypress = True

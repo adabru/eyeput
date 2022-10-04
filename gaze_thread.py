@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import pickle
 
-from PyQt5.QtCore import pyqtSignal, QThread, QMutex
+from PySide2.QtCore import Signal, QThread, QMutex
 
 from unix_socket import UnixSocket
 from settings import *
@@ -33,7 +33,7 @@ class InputFrame:
 
 
 class GazeThread(QThread):
-    gaze_signal = pyqtSignal(object)
+    gaze_signal = Signal(object)
 
     def __init__(self, pause_lock):
         super().__init__()

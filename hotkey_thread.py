@@ -1,6 +1,6 @@
 import os
-from PyQt5.QtCore import (
-    pyqtSignal,
+from PySide2.QtCore import (
+    Signal,
     QThread,
 )
 
@@ -8,7 +8,7 @@ from settings import *
 
 
 class HotḱeyThread(QThread):
-    hotkey_signal = pyqtSignal()
+    hotkey_signal = Signal()
 
     def __init__(self):
         super().__init__()

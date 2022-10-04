@@ -1,8 +1,8 @@
 import os.path
 
-from PyQt5.QtWidgets import QWidget
-from PyQt5.QtGui import QPainter, QPixmap
-from PyQt5.QtCore import Qt, QPoint, QPointF, QRect, QTimer
+from PySide2.QtWidgets import QWidget
+from PySide2.QtGui import QPainter, QPixmap
+from PySide2.QtCore import Qt, QPoint, QPointF, QRect, QTimer
 
 from settings import *
 from util import *

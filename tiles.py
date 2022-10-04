@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import os.path
 
-from PyQt5.QtCore import QRectF, QPointF
+from PySide2.QtCore import QRectF, QPointF
 
 from settings import *
 

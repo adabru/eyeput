@@ -1,8 +1,8 @@
 import os.path
 
-from PyQt5.QtWidgets import QLabel
-from PyQt5.QtGui import QFont, QColor, QPainter, QPixmap
-from PyQt5.QtCore import Qt, QPoint, QRect, QTimer
+from PySide2.QtWidgets import QLabel
+from PySide2.QtGui import QFont, QColor, QPainter, QPixmap
+from PySide2.QtCore import Qt, QPoint, QRect, QTimer
 
 from settings import *
 

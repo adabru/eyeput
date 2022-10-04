@@ -1,5 +1,5 @@
-from PyQt5.QtCore import QRectF, Qt, QTimer, pyqtSlot, pyqtSignal
-from PyQt5.QtWidgets import QWidget
+from PySide2.QtCore import QRectF, Qt, QTimer, Slot, Signal
+from PySide2.QtWidgets import QWidget
 from command_label import CommandLabel
 
 from logger import *
@@ -22,7 +22,7 @@ class LabelGrid(QWidget):
     state = GridState()
     labels = {}
     hover_item = None
-    action_signal = pyqtSignal(object, object, bool)
+    action_signal = Signal(object, object, bool)
 
     def __init__(self, parent, geometry):
         super().__init__(parent)
@@ -126,7 +126,7 @@ class LabelGrid(QWidget):
             if label.id == None:
                 label.hide()
 
-    @pyqtSlot()
+    @Slot()
     def select_item(self, hide=None):
         log_info("selectItem: " + self.hover_item.id)
         self.hover_timer.stop()
