@@ -223,6 +223,15 @@ class App(QObject):
             elif item.id == "calibration_cancel":
                 self.gaze_calibration.cancel()
                 self.set_mode(Modes._previous)
+            elif item.id == "select_and_hold":
+                hide_grid = False
+                self.grid_widget.on_gaze(blink_position[0], blink_position[1])
+                self.grid_widget.select_item(False)
+            elif item.id == "select_and_hide":
+                hide_grid = False
+                self.grid_widget.on_gaze(blink_position[0], blink_position[1])
+                self.set_mode(Modes._previous)
+                self.grid_widget.select_item(True)
 
         if hide_grid:
             self.grid_widget.hide_delayed()

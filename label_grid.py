@@ -8,9 +8,14 @@ from tiles import *
 
 
 class GridState:
-    lvl = ""
-    hold = False
-    modifiers = set()
+    # currently shown layer
+    layer: str = ""
+    # keep grid open after selecting
+    hold: bool = False
+    # select on timeout
+    timeout: bool = False
+    # selected key modifiers
+    modifiers: set[str] = set()
 
 
 class LabelGrid(QWidget):
@@ -61,7 +66,7 @@ class LabelGrid(QWidget):
             self.hide_timer.start(50)
 
     def set_layer(self, levelId):
-        self.state.lvl = levelId
+        self.state.layer = levelId
         self.update_grid()
 
     def on_gaze(self, x, y, after_activation=False):
@@ -81,7 +86,7 @@ class LabelGrid(QWidget):
         if widget == self.hover_item:
             return log_debug("same")
 
-        if not after_activation:
+        if not after_activation and self.state.timeout:
             self.hover_timer.start(int(Times.element_selection * 1000))
         else:
             self.hover_timer.stop()
@@ -104,7 +109,7 @@ class LabelGrid(QWidget):
             label.setToggled(False)
             # self.hoverItem.setHovered(False)
 
-        for key, item in tiles[self.state.lvl].items():
+        for key, item in tiles[self.state.layer].items():
             label = self.labels[(item.x, item.y)]
             label.id = key
             label.setItem(item)
@@ -122,10 +127,13 @@ class LabelGrid(QWidget):
                 label.hide()
 
     @pyqtSlot()
-    def select_item(self):
+    def select_item(self, hide=None):
         log_info("selectItem: " + self.hover_item.id)
         self.hover_timer.stop()
         self.hover_item.activate()
+
+        if hide == None:
+            hide = not self.state.hold
 
         if self.hover_item.id == "hold":
             self.state.hold = not self.state.hold
@@ -139,11 +147,9 @@ class LabelGrid(QWidget):
             self.update_grid()
 
         elif type(self.hover_item.item) is KeyAction:
-            self.action_signal.emit(
-                self.hover_item.item, self.state.modifiers, not self.state.hold
-            )
+            self.action_signal.emit(self.hover_item.item, self.state.modifiers, hide)
             self.state.modifiers.clear()
             self.update_grid()
 
         else:
-            self.action_signal.emit(self.hover_item.item, None, True)
+            self.action_signal.emit(self.hover_item.item, None, hide)

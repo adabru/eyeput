@@ -305,6 +305,8 @@ blink_commands = {
     },
     Modes.grid: {
         (" ", Zone.any): SetModeAction("", None, 0, 0, Modes._previous),
+        (".r", Zone.inside): BlinkAction("", None, 0, 0, "select_and_hold"),
+        (".l", Zone.inside): BlinkAction("", None, 0, 0, "select_and_hide"),
     },
     Modes.calibration: {
         (". . .", Zone.any): BlinkAction("", None, 0, 0, "calibration_cancel"),
