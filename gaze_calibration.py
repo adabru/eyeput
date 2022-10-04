@@ -4,7 +4,6 @@
 
 
 from collections import deque
-from dataclasses import astuple
 from pathlib import Path
 import pickle
 
@@ -31,8 +30,13 @@ class CalibrationData:
     T: np.ndarray = None
     r3: np.ndarray = None
 
+    # properties used for faster computation
+    Ti: np.ndarray = None
+    l: np.ndarray = None
+
+    # there's quite a performance penalty for a generic solution
     def __iter__(self):
-        return iter(astuple(self))
+        return iter((self.T, self.r3, self.Ti, self.l))
 
 
 class LookAtMe(QWidget):
@@ -85,11 +89,20 @@ class EyeCalibration:
             return x / screen_size_mm + vec(0.5, 1.0)
         # https://en.wikipedia.org/wiki/Barycentric_coordinate_system#Edge_approach
         else:
-            T, r3 = self.calibration_data
-            l = np.zeros(3)
-            l[:2] = np.linalg.solve(T, x - r3)
+            T, r3, Ti, l = self.calibration_data
+            l[:2] = Ti @ (x - r3)
             l[2] = 1 - l[0] - l[1]
-            return l @ calibration_points
+            screen_position = np.dot(l, calibration_points)
+            # ntimes(
+            #     1000,
+            #     lambda: self.calibration_data.__iter__(),
+            #     lambda: np.zeros(3),
+            #     lambda: Ti @ (x - r3),
+            #     lambda: 1 - l[0] - l[1],
+            #     lambda: l @ calibration_points,
+            #     lambda: np.dot(l, calibration_points),
+            # )
+            return screen_position
 
     def start(self):
         self.measurements.clear()
@@ -103,8 +116,10 @@ class EyeCalibration:
         self.next()
         r = self.measurements
         self.calibration_data = CalibrationData(
-            np.array([r[0] - r[2], r[1] - r[2]]),
-            r[2],
+            T=np.array([r[0] - r[2], r[1] - r[2]]),
+            r3=r[2],
+            Ti=np.linalg.inv(np.array([r[0] - r[2], r[1] - r[2]])),
+            l=np.zeros(3),
         )
         with self.calibration_path.open("wb") as file:
             pickle.dump(self.calibration_data, file, pickle.HIGHEST_PROTOCOL)

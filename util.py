@@ -1,3 +1,5 @@
+import timeit
+
 from PyQt5.QtWidgets import QWidget
 from PyQt5.QtCore import QPoint, QPointF
 
@@ -47,3 +49,7 @@ def get_screen_geometry():
 def set_screen_geometry(geometry):
     global screen_geometry
     screen_geometry = geometry
+
+
+def ntimes(n, f):
+    print(timeit.timeit(f, number=n))
