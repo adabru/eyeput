@@ -1,6 +1,8 @@
-# <img src="./eyeput.png" alt="drawing" width="50"/> Eyeput
+# <img src="./eyeput.png" alt="drawing" width="50"/> Eyeput (WIP)
 
-This python application offers complete desktop control via eye tracking.
+This is an extended onscreen input method for eye tracking.
+
+<img src="./resources/screen.png" alt="screenshot"/>
 
 ```sh
 # application dependencies
@@ -19,14 +21,3 @@ sudo usermod -a -G tty,input $USER
 ```
 
 Add a hotkey in your window manager with the command: `eyeput toggle`.
-
-TODO
-
-- scroll, mouse move
-- unicode symbols
-- special clicks: double, etc.
-
-KNOWN ISSUES:
-
-- eyeput window is not shown in task/Activities overview
-- firefox pop up menu disappers when pressing hotkey
