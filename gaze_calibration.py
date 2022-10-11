@@ -19,24 +19,33 @@ from gaze_filter import *
 screen_size_mm = vec(344.0, -193.0)
 
 calibration_points = [
-    vec(0.05, 0.05),
-    vec(0.95, 0.05),
-    vec(0.5, 0.95),
+    vec(0.01, 0.01),
+    vec(0.99, 0.01),
+    vec(0.01, 0.95),
+    vec(0.97, 0.95),
 ]
 
 
 @dataclass
 class CalibrationData:
-    T: np.ndarray = None
-    r3: np.ndarray = None
+    r: np.ndarray = None
+    Tinv: np.ndarray = None
+    y: np.ndarray = None
 
     # properties used for faster computation
-    Ti: np.ndarray = None
     l: np.ndarray = None
 
     # there's quite a performance penalty for a generic solution
     def __iter__(self):
-        return iter((self.T, self.r3, self.Ti, self.l))
+        return iter((self.r, self.Tinv, self.y, self.l))
+
+    def _is_last(self):
+        for i in range(len(self.r) - 1):
+            yield False
+        yield True
+
+    def triangles(self):
+        return zip(self.r, self.Tinv, self.y, self._is_last())
 
 
 class LookAtMe(QWidget):
@@ -101,18 +110,22 @@ class EyeCalibration:
             return x / screen_size_mm + vec(0.5, 1.0)
         # https://en.wikipedia.org/wiki/Barycentric_coordinate_system#Edge_approach
         else:
-            T, r3, Ti, l = self.calibration_data
-            l[:2] = Ti @ (x - r3)
-            l[2] = 1 - l[0] - l[1]
-            screen_position = np.dot(l, calibration_points)
+            l = self.calibration_data.l
+
+            def find_triangle(l):
+                triangles = self.calibration_data.triangles()
+                for r, Tinv, y, is_last in triangles:
+                    l[:2] = Tinv @ (x - r[2])
+                    if 0 <= l[0] <= 1 and 0 <= l[1] <= 1 or is_last:
+                        l[2] = 1 - l[0] - l[1]
+                        return y
+
+            y = find_triangle(l)
+            screen_position = np.dot(l, y)
             # ntimes(
             #     1000,
-            #     lambda: self.calibration_data.__iter__(),
+            #     lambda: find_triangle(),
             #     lambda: np.zeros(3),
-            #     lambda: Ti @ (x - r3),
-            #     lambda: 1 - l[0] - l[1],
-            #     lambda: l @ calibration_points,
-            #     lambda: np.dot(l, calibration_points),
             # )
             return screen_position
 
@@ -126,11 +139,18 @@ class EyeCalibration:
             self.marker.show()
 
     def finalize(self):
-        r = self.measurements
+        x = self.measurements.copy()
+        # triangle strip
+        I = range(len(x) - 2)
         self.calibration_data = CalibrationData(
-            T=np.array([r[0] - r[2], r[1] - r[2]]),
-            r3=r[2],
-            Ti=np.linalg.inv(np.array([r[0] - r[2], r[1] - r[2]])),
+            r=[x[i : i + 3] for i in I],
+            Tinv=[
+                np.linalg.inv(
+                    np.array([x[i + 0] - x[i + 2], x[i + 1] - x[i + 2]]).transpose()
+                )
+                for i in I
+            ],
+            y=[calibration_points[i : i + 3] for i in I],
             l=np.zeros(3),
         )
         with self.calibration_path.open("wb") as file:
