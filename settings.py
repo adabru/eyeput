@@ -28,11 +28,12 @@ class Tiles:
 
 
 class Colors:
-    text = QColor(0, 0, 0)
-    item = "#44f0f0ff"
+    text_label = QColor(0, 0, 0, 100)
+    text_status = QColor(0, 0, 0, 255)
+    item = "#88f0f0ff"
     circle_border = QColor(255, 255, 255, 0)
-    circle = QColor(255, 255, 255, 50)
-    circle_hovered = QColor(80, 255, 255, 150)
+    circle = QColor(0, 0, 0, 255)
+    circle_hovered = QColor(80, 255, 255, 255)
     circle_activated = QColor(255, 80, 80, 150)
     circle_toggled = QColor(80, 80, 255, 150)
     modifierBorder = QColor(168, 34, 3, 50)

@@ -1,4 +1,5 @@
-from PySide2.QtCore import QRectF, Qt, QTimer, Slot, Signal
+from PySide2.QtCore import QRect, QRectF, Qt, QTimer, Slot, Signal
+from PySide2.QtGui import QFont, QColor, QPainter, QPixmap
 from PySide2.QtWidgets import QWidget
 from command_label import CommandLabel
 
@@ -16,6 +17,31 @@ class GridState:
     timeout: bool = False
     # selected key modifiers
     modifiers: set[str] = set()
+
+
+class GridLines(QWidget):
+    geometry: QRect
+
+    def __init__(self, parent, geometry: QRect):
+        super().__init__(parent)
+        self.setGeometry(geometry)
+        self.geometry = geometry
+        self.show()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setPen(Colors.text_label)
+
+        dx = int(self.geometry.width() / Tiles.x)
+        dy = int(self.geometry.height() / Tiles.y)
+
+        # horizontal
+        for i in range(3):
+            painter.drawRect(0, i * 2 * dy, self.geometry.width(), 2 * dy)
+
+        # vertical
+        for i in range(3):
+            painter.drawRect(i * 4 * dx, 0, 4 * dx, self.geometry.height())
 
 
 class LabelGrid(QWidget):
@@ -48,6 +74,8 @@ class LabelGrid(QWidget):
                 label.setFocusPolicy(Qt.NoFocus)
 
                 self.labels[(x, y)] = label
+
+        self.lines = GridLines(self, geometry)
 
     def activate(self, label):
         if label != "_hide":

@@ -72,9 +72,12 @@ class CommandLabel(QLabel):
         # draw text
         fontSize = 20
         painter.setFont(QFont("Arial", fontSize))
-        painter.setPen(Colors.text)
+        painter.setPen(Colors.text_label)
         painter.drawText(
-            self.rect(),
+            0,
+            0,
+            self.width(),
+            0.5 * self.height(),
             Qt.AlignCenter,
             self.text(),
         )

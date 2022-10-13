@@ -92,7 +92,7 @@ class Status(QWidget):
         # draw text
         fontSize = 8
         painter.setFont(QFont("Arial", fontSize))
-        painter.setPen(Colors.text)
+        painter.setPen(Colors.text_status)
         painter.drawText(
             QRect(0, 0, 45, 20),
             Qt.AlignCenter,
@@ -102,7 +102,7 @@ class Status(QWidget):
         # draw stats
         fontSize = 8
         painter.setFont(QFont("Arial", fontSize))
-        painter.setPen(Colors.text)
+        painter.setPen(Colors.text_status)
         painter.drawText(
             QRect(0, 10, 45, 20),
             Qt.AlignCenter,
