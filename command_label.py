@@ -57,6 +57,12 @@ class CommandLabel(QLabel):
     def paintEvent(self, event):
         painter = QPainter(self)
 
+        # activation flash
+        if self.activated:
+            painter.setBrush(Colors.circle_activated)
+            painter.setPen(Colors.circle_activated)
+            painter.drawRect(self.rect())
+
         # draw image
         if self.pixmap:
             pixmapRatio = float(self.pixmap.width()) / self.pixmap.height()
