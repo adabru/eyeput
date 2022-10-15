@@ -16,7 +16,7 @@ class Action:
 
 @dataclass
 class InternalAction(Action):
-    pass
+    id: str
 
 
 @dataclass
@@ -43,7 +43,7 @@ class KeyAction(Action):
 
 
 @dataclass
-class CmdAction(Action):
+class ShellAction(Action):
     cmd: str = None
 
 
@@ -141,7 +141,7 @@ tiles = {
         "tab": KeyAction("⇥", None, 8, 5, "tab"),
         "enter": KeyAction("↲", None, 9, 5, "enter"),
         "slash": KeyAction("/", None, 10, 5, "shift+7"),
-        "hold": InternalAction("∞", None, 11, 5),
+        "hold": InternalAction("∞", None, 11, 5, "hold"),
         "keyboard2": GridLayerAction("➁", None, 12, 5, "keyboard2"),
         "textCmds": GridLayerAction("➂", None, 13, 5, "textCmds"),
     },
@@ -200,7 +200,7 @@ tiles = {
         "F11": KeyAction("F11", None, 10, 4),
         "F12": KeyAction("F12", None, 11, 4),
         # row 5
-        "hold": InternalAction("∞", None, 11, 5),
+        "hold": InternalAction("∞", None, 11, 5, "hold"),
         "keyboard1": GridLayerAction("➀", None, 12, 5, "keyboard1"),
         "textCmds": GridLayerAction("➂", None, 13, 5, "textCmds"),
     },
@@ -214,13 +214,13 @@ tiles = {
         # row 3
         # row 4
         # row 5
-        "hold": InternalAction("∞", None, 11, 5),
+        "hold": InternalAction("∞", None, 11, 5, "hold"),
         "keyboard1": GridLayerAction("➀", None, 12, 5, "keyboard1"),
         "keyboard2": GridLayerAction("➁", None, 13, 5, "keyboard2"),
     },
     "apps": {
         # row 0
-        "vsc-eyeput": CmdAction(
+        "vsc-eyeput": ShellAction(
             "/eyeput",
             f"{os.path.dirname(__file__)}/resources/vsc.png",
             1,
@@ -228,7 +228,7 @@ tiles = {
             f"code {os.path.dirname(__file__)}",
         ),
         # row 1
-        "terminal": CmdAction(
+        "terminal": ShellAction(
             "",
             "/usr/share/app-info/icons/archlinux-arch-community/128x128/liri-terminal_utilities-terminal.png",
             0,
@@ -236,28 +236,28 @@ tiles = {
             "gnome-terminal",
         ),
         # row 2
-        "google": CmdAction(
+        "google": ShellAction(
             "google",
             "/usr/share/app-info/icons/archlinux-arch-extra/64x64/kaccounts-providers_applications-internet.png",
             0,
             2,
             "xdg-open http://google.com &",
         ),
-        "golem": CmdAction(
+        "golem": ShellAction(
             "golem",
             f"{os.path.dirname(__file__)}/resources/jitsi.png",
             1,
             2,
             "xdg-open https://meet.golem.de/ &",
         ),
-        "github": CmdAction(
+        "github": ShellAction(
             "github",
             f"{os.path.dirname(__file__)}/resources/web-github-icon.png",
             2,
             2,
             "xdg-open https://github.com/adabru &",
         ),
-        "github": CmdAction(
+        "github": ShellAction(
             "github",
             "invalid path",
             2,
@@ -270,6 +270,7 @@ tiles = {
         "scroll_mode": SetModeAction("↕", None, 0, 0, Modes.scrolling),
         "click_mode": SetModeAction("🖰", None, 1, 0, Modes.enabled),
         "pause_mode": SetModeAction("pause", None, 2, 0, Modes.paused),
+        "debug_gaze": InternalAction("👁", None, 3, 0, "debug_gaze"),
         # "calibration": SetModeAction("cal", None, 3, 0, Modes.calibration),
     },
 }

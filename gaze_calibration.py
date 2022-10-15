@@ -15,6 +15,7 @@ import numpy as np
 
 from util import *
 from gaze_filter import *
+from settings import *
 
 screen_size_mm = vec(344.0, -193.0)
 
@@ -188,8 +189,8 @@ class Calibration(QWidget):
         self.lookatme = LookAtMe(self, calibration_points)
         self.paused = True
         self.lookatme.show()
-        self.left = EyeCalibration(self, "left", QColor("lime"), calibration_points)
-        self.right = EyeCalibration(self, "right", QColor("red"), calibration_points)
+        self.left = EyeCalibration(self, "left", Colors.eye_left, calibration_points)
+        self.right = EyeCalibration(self, "right", Colors.eye_right, calibration_points)
         self.hide()
 
     def get(self, label):

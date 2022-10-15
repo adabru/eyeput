@@ -41,6 +41,8 @@ class Colors:
     eye_closed = QColor(0, 0, 0, 80)
     eye_flickering = QColor(255, 0, 0, 150)
     eye_opened = QColor(0, 255, 0, 150)
+    eye_left = QColor("lime")
+    eye_right = QColor("red")
 
 
 class Modes:

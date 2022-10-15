@@ -18,6 +18,7 @@ from status import *
 import external
 from tiles import *
 
+from debug_gaze import DebugGaze
 from graph import *
 
 
@@ -26,6 +27,7 @@ class App(QObject):
     grid_widget = None
     status_widget = None
     gaze_pointer = None
+    debug_gaze: DebugGaze
 
     activation = GridActivation()
     mode = Modes.enabled
@@ -82,6 +84,8 @@ class App(QObject):
         self.widget.setWindowTitle("eyeput")
         self.widget.show()
 
+        self.debug_gaze = DebugGaze(self.widget)
+
         # self.graph = Graph()
         # self.graph.setup()
 
@@ -135,6 +139,8 @@ class App(QObject):
         blink_callback = callbacks[self.mode].get("on_blink", [])
         variance_callback = callbacks[self.mode].get("on_variance", [])
         frame_callback = callbacks[self.mode].get("on_frame", [])
+        if self.debug_gaze.isVisible():
+            frame_callback.append(self.debug_gaze.on_frame)
         filtered_frame = self.gaze_filter.transform(
             input_frame,
             position=position_callback,
@@ -179,8 +185,11 @@ class App(QObject):
             self.click_timer.setInterval(int(Times.click * 1000))
             self.click_timer.start()
             self.mouseMoveTime = time.time()
-        elif type(item) is CmdAction:
+        elif type(item) is ShellAction:
             external.exec(item.cmd)
+        elif type(item) is InternalAction:
+            if item.id == "debug_gaze":
+                self.debug_gaze.setVisible(not self.debug_gaze.isVisible())
 
         # shared actions
         elif type(item) is GridLayerAction:

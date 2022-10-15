@@ -4,7 +4,6 @@ from PySide2.QtWidgets import QWidget
 from command_label import CommandLabel
 
 from logger import *
-from settings import *
 from tiles import *
 
 
