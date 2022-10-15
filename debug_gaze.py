@@ -27,8 +27,12 @@ class DebugGaze(QWidget):
         self.setGeometry(get_screen_geometry())
         self.left = Circle(self, Colors.eye_left)
         self.right = Circle(self, Colors.eye_right)
+        self.center = Circle(self, Colors.eye_center)
 
     def on_frame(self, frame: FilteredFrame):
         if self.isVisible():
             self.left.move(rel2abs(frame.l_screen_position))
             self.right.move(rel2abs(frame.r_screen_position))
+            self.center.move(
+                rel2abs(0.5 * (frame.l_screen_position + frame.r_screen_position))
+            )

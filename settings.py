@@ -43,6 +43,7 @@ class Colors:
     eye_opened = QColor(0, 255, 0, 150)
     eye_left = QColor("lime")
     eye_right = QColor("red")
+    eye_center = QColor("cyan")
 
 
 class Modes:

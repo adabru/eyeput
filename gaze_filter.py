@@ -151,14 +151,15 @@ class PointerFilter:
 
     left_filter = CircleFilter()
 
-    def transform(self, t, left, right):
-        if not left[-1].any():
-            if not right[-1].any():
-                return left[-1]
-            else:
-                return self.left_filter.transform(right, self.lookbehind, self.radius)
-        else:
+    def transform(self, t, left, right, center):
+        if not left[-1].any() and not right[-1].any():
+            return left[-1]
+        elif not left[-1].any() and right[-1].any():
+            return self.left_filter.transform(right, self.lookbehind, self.radius)
+        elif left[-1].any() and not right[-1].any():
             return self.left_filter.transform(left, self.lookbehind, self.radius)
+        elif left[-1].any() and right[-1].any():
+            return self.left_filter.transform(center, self.lookbehind, self.radius)
 
 
 class VarianceFilter:
@@ -246,6 +247,7 @@ class GazeFilter:
     # screen position, 0=top-left 1=bottom-right
     left = deque([np.array((0.0, 0.0))] * 50, 50)
     right = deque([np.array((0.0, 0.0))] * 50, 50)
+    center = deque([np.array((0.0, 0.0))] * 50, 50)
     # merged screen position
     filtered_position = deque([np.array((0.0, 0.0))] * 50, 50)
 
@@ -275,10 +277,11 @@ class GazeFilter:
         )
         self.left.append(frame.l_screen_position)
         self.right.append(frame.r_screen_position)
+        self.center.append(0.5 * (frame.r_screen_position + frame.r_screen_position))
         frame.screen_position = frame.l_screen_position
         if position:
             frame.screen_position = self.pointer_filter.transform(
-                self.t, self.left, self.right
+                self.t, self.left, self.right, self.center
             )
         self.filtered_position.append(frame.screen_position)
         if variance:
