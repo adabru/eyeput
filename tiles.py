@@ -210,6 +210,13 @@ tiles = {
         "cut": KeyAction("cut", None, 1, 0, "ctrl+x"),
         "paste": KeyAction("paste", None, 2, 0, "ctrl+v"),
         # row 1
+        "save": KeyAction("save", None, 0, 1, "ctrl+s"),
+        "undo": KeyAction("undo", None, 1, 1, "ctrl+z"),
+        "redo": KeyAction("redo", None, 2, 1, "ctrl+y"),
+        "clone": KeyAction("clone", None, 3, 1, "ctrl+d"),
+        "del": KeyAction("del", None, 4, 1, "ctrl+shift+d"),
+        "next": KeyAction("next", None, 5, 1, "ctrl+alt+f"),
+        "find": KeyAction("find", None, 6, 1, "ctrl+f"),
         # row 2
         # row 3
         # row 4
@@ -290,6 +297,7 @@ class Zone:
 
 Zone.tl = Zone((-0.1, -0.1), (0.3, 0.3))
 Zone.tr = Zone((0.7, -0.1), (1.1, 0.3))
+Zone.br = Zone((0.7, 0.7), (1.1, 1.1))
 Zone.c = Zone((0.3, 0.3), (0.6, 0.6))
 Zone.inside = Zone((-0.1, -0.1), (1.1, 1.1))
 Zone.any = Zone((-100.0, -100.0), (100.0, 100.0))
@@ -324,6 +332,7 @@ blink_commands = {
         (". . . .", Zone.any): SetModeAction("cal", None, 3, 0, Modes.calibration),
         (".r", Zone.c): GridLayerAction("", None, 0, 0, "keyboard1"),
         (".r", Zone.tr): GridLayerAction("", None, 0, 0, "keyboard2"),
+        (".r", Zone.br): GridLayerAction("", None, 0, 0, "textCmds"),
         (".r", Zone.tl): GridLayerAction("", None, 0, 0, "eye_modes"),
         (". r", Zone.inside): BlinkAction("", None, 0, 0, "scroll_up"),
         (" r", Zone.inside): BlinkAction("", None, 0, 0, "scroll_up"),
