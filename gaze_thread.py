@@ -53,18 +53,17 @@ class GazeThread(QThread):
                 while True:
                     self.pause_lock.lock()
                     self.pause_lock.unlock()
-                    transmission = sock_gaze.receive()
+                    transmission = sock_gaze.receive(2.0)
                     gaze_frame = InputFrame.from_bytes(transmission)
                     self.gaze_signal.emit(gaze_frame)
                     # graph.gaze_signal.emit(t, l0, l1, r0, r1)
 
-            except ValueError as err:
-                print(err)
-
-            except RuntimeError as err:
-                print(err)
-
-            except pickle.UnpicklingError as err:
+            except (
+                ValueError,
+                RuntimeError,
+                pickle.UnpicklingError,
+                TimeoutError,
+            ) as err:
                 print(err)
 
             finally:

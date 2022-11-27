@@ -25,6 +25,12 @@ class SetModeAction(Action):
 
 
 @dataclass
+class TagAction(Action):
+    tag: str
+    action: str
+
+
+@dataclass
 class MouseAction(Action):
     id: str
 
@@ -278,6 +284,7 @@ tiles = {
         "click_mode": SetModeAction("🖰", None, 1, 0, Modes.enabled),
         "pause_mode": SetModeAction("pause", None, 2, 0, Modes.paused),
         "debug_gaze": InternalAction("👁", None, 3, 0, "debug_gaze"),
+        "follow_tag": TagAction("follow", None, 4, 0, "follow", "toggle"),
         # "calibration": SetModeAction("cal", None, 3, 0, Modes.calibration),
     },
 }

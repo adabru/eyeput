@@ -14,8 +14,8 @@
 
 import asyncio
 from inspect import getmembers
+import logging
 import time
-from traceback import print_exception
 import os
 from pathlib import Path
 from typing import Callable, Dict, List, Tuple
@@ -66,7 +66,7 @@ async def _call_func(local_object: object, func_name: str, *args):
             result = await result
         return result
     except Exception as e:
-        print_exception(e)
+        logging.error(e, exc_info=True)
         raise ExecutionError(e)
 
 
@@ -84,7 +84,7 @@ class _Connection:
 
     pending_requests: Dict[str, asyncio.Future]
     local_objects: Dict[str, object]
-    local_listeners: Dict[Tuple[str, str], Callable[[str, object], None]]
+    local_listeners: Dict[Tuple[str, str], Callable[..., None]]
     peers: Dict[object, Tuple[asyncio.StreamReader, asyncio.StreamWriter]]
 
     def __init__(self):
@@ -141,20 +141,19 @@ class _Connection:
             request.set_result(message["result"])
         else:
             error = message["error"]
-            match error["code"]:
-                case ParseError.code:
-                    request.set_exception(ParseError(error["message"]))
-                case InvalidRequest.code:
-                    request.set_exception(InvalidRequest(error["message"]))
-                case MethodNotFound.code:
-                    request.set_exception(MethodNotFound(error["message"]))
-                case ObjectNotAvailable.code:
-                    request.set_exception(ObjectNotAvailable(error["message"]))
-                case ExecutionError.code:
-                    request.set_exception(ExecutionError(error["message"]))
-                case _:
-                    print("Unknown error code: ", error["code"])
-                    request.set_exception(RuntimeError(error["message"]))
+            if error["code"] == ParseError.code:
+                request.set_exception(ParseError(error["message"]))
+            elif error["code"] == InvalidRequest.code:
+                request.set_exception(InvalidRequest(error["message"]))
+            elif error["code"] == MethodNotFound.code:
+                request.set_exception(MethodNotFound(error["message"]))
+            elif error["code"] == ObjectNotAvailable.code:
+                request.set_exception(ObjectNotAvailable(error["message"]))
+            elif error["code"] == ExecutionError.code:
+                request.set_exception(ExecutionError(error["message"]))
+            else:
+                print("Unknown error code: ", error["code"])
+                request.set_exception(RuntimeError(error["message"]))
 
     async def _handle_notification(self, peer_id: object, message: object):
         raise NotImplementedError
@@ -197,20 +196,20 @@ class _Connection:
     async def call(self, bus_name: str, func_name: str, *args):
         raise NotImplementedError
 
-    async def subscribe(
-        self, bus_name: str, signal_name: str, callback: Callable[[str, object], None]
+    async def subscribe_signal(
+        self, bus_name: str, signal_name: str, callback: Callable[..., None]
     ):
         self.local_listeners[(bus_name, signal_name)] = callback
 
-    def _local_notify(self, bus_name: str, signal_name: str, signal_data: object):
+    def _local_notify(self, bus_name: str, signal_name: str, signal_data: List):
         callback = self.local_listeners.get((bus_name, signal_name), None)
         if callback != None:
             try:
-                callback(signal_data)
+                callback(*signal_data)
             except Exception as e:
-                print_exception(e)
+                logging.error(e, exc_info=True)
 
-    async def notify(self, bus_name: str, signal_name: str, signal_data: object):
+    async def notify(self, bus_name: str, signal_name: str, signal_data: List):
         self._local_notify(bus_name, signal_name, signal_data)
         # relay notification
         for peer_id in self.peers.keys():
@@ -251,25 +250,24 @@ class _Client(_Connection):
         result = None
         error = None
         try:
-            match message["method"]:
-                case "call":
-                    if message["params"]["bus_name"] in self.local_objects:
-                        result = await self.call(
-                            message["params"]["bus_name"],
-                            message["params"]["func_name"],
-                            *message["params"]["args"],
-                        )
-                    else:
-                        error = rpc_error(ObjectNotAvailable, "Not found.")
-                case "inspect_interface":
-                    if message["params"]["bus_name"] in self.local_objects:
-                        result = _get_interface(
-                            self.local_objects[message["params"]["bus_name"]]
-                        )
-                    else:
-                        error = rpc_error(ObjectNotAvailable, "Not found.")
-                case _:
-                    error = rpc_error(MethodNotFound, "Not found.")
+            if message["method"] == "call":
+                if message["params"]["bus_name"] in self.local_objects:
+                    result = await self.call(
+                        message["params"]["bus_name"],
+                        message["params"]["func_name"],
+                        *message["params"]["args"],
+                    )
+                else:
+                    error = rpc_error(ObjectNotAvailable, "Not found.")
+            elif message["method"] == "inspect_interface":
+                if message["params"]["bus_name"] in self.local_objects:
+                    result = _get_interface(
+                        self.local_objects[message["params"]["bus_name"]]
+                    )
+                else:
+                    error = rpc_error(ObjectNotAvailable, "Not found.")
+            else:
+                error = rpc_error(MethodNotFound, "Not found.")
         except KeyError as e:
             error = rpc_error(InvalidRequest, repr(e))
         except ExecutionError as e:
@@ -304,6 +302,7 @@ class _Client(_Connection):
 
 class _Server(_Connection):
     remote_objects: Dict[str, object]
+    server: asyncio.Server
 
     def __init__(self):
         super().__init__()
@@ -326,7 +325,7 @@ class _Server(_Connection):
         except asyncio.IncompleteReadError:
             pass
         except Exception as e:
-            print_exception(e)
+            logging.error(e, exc_info=True)
         finally:
             self._unregister_client(peer_id)
             writer.close()
@@ -356,28 +355,25 @@ class _Server(_Connection):
         result = None
         error = None
         try:
-            match message["method"]:
-                case "register":
-                    self.remote_objects[message["params"]["bus_name"]] = peer_id
-                    result = "ok"
-                case "call":
-                    try:
-                        result = await self.call(
-                            message["params"]["bus_name"],
-                            message["params"]["func_name"],
-                            *message["params"]["args"],
-                        )
-                    except ObjectNotAvailable:
-                        error = rpc_error(ObjectNotAvailable, "Not found.")
-                case "inspect_interface":
-                    try:
-                        result = await self.inspect_interface(
-                            message["params"]["bus_name"]
-                        )
-                    except ObjectNotAvailable:
-                        error = rpc_error(ObjectNotAvailable, "Not found.")
-                case _:
-                    error = rpc_error(MethodNotFound, "Not found.")
+            if message["method"] == "register":
+                self.remote_objects[message["params"]["bus_name"]] = peer_id
+                result = "ok"
+            elif message["method"] == "call":
+                try:
+                    result = await self.call(
+                        message["params"]["bus_name"],
+                        message["params"]["func_name"],
+                        *message["params"]["args"],
+                    )
+                except ObjectNotAvailable:
+                    error = rpc_error(ObjectNotAvailable, "Not found.")
+            elif message["method"] == "inspect_interface":
+                try:
+                    result = await self.inspect_interface(message["params"]["bus_name"])
+                except ObjectNotAvailable:
+                    error = rpc_error(ObjectNotAvailable, "Not found.")
+            else:
+                error = rpc_error(MethodNotFound, "Not found.")
         except KeyError as e:
             error = rpc_error(InvalidRequest, repr(e))
         except ExecutionError as e:
@@ -442,6 +438,8 @@ class SessionBus:
     connection: _Connection = None
     # Timeout for connecting to a server, only relevant if client_only=True
     timeout: float
+    # Listeners for connection and register events
+    bus_listeners: List[Callable[..., None]]
 
     def __init__(
         self,
@@ -455,6 +453,7 @@ class SessionBus:
         self.server_only = server_only
         self.timeout = timeout
         self.is_connected = asyncio.get_running_loop().create_future()
+        self.bus_listeners = []
         self._start()
 
     def _exception(self, io_task: asyncio.Task):
@@ -473,6 +472,11 @@ class SessionBus:
             self.io_task.add_done_callback(self._exception)
 
     async def _run(self):
+        def notify_connect():
+            self.is_connected.set_result(True)
+            for listener in self.bus_listeners:
+                listener("connect")
+
         while True:
             if not self.server_only:
                 # try to connect to existing server first
@@ -480,7 +484,7 @@ class SessionBus:
                     client = _Client()
                     await client.start(self.socket_path)
                     self.connection = client
-                    self.is_connected.set_result(True)
+                    notify_connect()
                     _debug_print(1, "client connection")
                     await self.connection.serve()
                 except (NoServerError, asyncio.IncompleteReadError):
@@ -512,7 +516,7 @@ class SessionBus:
                         _debug_print(1, "client connection after race")
                         server_task.cancel()
                         self.connection = client
-                        self.is_connected.set_result(True)
+                        notify_connect()
                         try:
                             await client_task
                         except asyncio.IncompleteReadError:
@@ -524,7 +528,7 @@ class SessionBus:
                     _debug_print(1, "server connection")
                     client_task.cancel()
                     self.connection = server
-                    self.is_connected.set_result(True)
+                    notify_connect()
                     await server_task
 
             if not self.is_connected.done():
@@ -582,15 +586,18 @@ class SessionBus:
         await proxy.inspect_interface()
         return proxy
 
-    async def subscribe(
-        self, bus_name: str, signal_name: str, callback: Callable[[str, object], None]
+    async def subscribe_signal(
+        self, bus_name: str, signal_name: str, callback: Callable[..., None]
     ):
         await self.wait_for_connection(timeout=self.timeout)
-        return await self.connection.subscribe(bus_name, signal_name, callback)
+        return await self.connection.subscribe_signal(bus_name, signal_name, callback)
 
-    async def notify(self, bus_name: str, signal_name: str, signal_data: object):
+    async def notify(self, bus_name: str, signal_name: str, signal_data: List):
         await self.wait_for_connection(timeout=self.timeout)
         return await self.connection.notify(bus_name, signal_name, signal_data)
+
+    def subscribe(self, callback: Callable[..., None]):
+        self.bus_listeners.append(callback)
 
     async def list_objects(self) -> List:
         await self.wait_for_connection(timeout=self.timeout)
@@ -610,7 +617,7 @@ class BusProxy:
         return await self.bus.call(self.name, func_name, *args)
 
     async def subscribe(self, signal_name: str, callback: Callable[..., None]):
-        return await self.bus.subscribe(self.name, signal_name, callback)
+        return await self.bus.subscribe_signal(self.name, signal_name, callback)
 
     async def inspect_interface(self):
         return await self.bus.inspect_interface(self.name)
@@ -624,5 +631,5 @@ class BusSignal:
     def __init__(self, signal_name: str = None):
         self.signal_name = signal_name
 
-    async def notify(self, data: object):
-        await self.bus.notify(self.bus_name, self.signal_name, data)
+    async def notify(self, *args):
+        await self.bus.notify(self.bus_name, self.signal_name, args)

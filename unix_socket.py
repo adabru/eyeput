@@ -65,9 +65,10 @@ class UnixSocket:
                 raise RuntimeError("socket connection broken")
             totalsent = totalsent + sent
 
-    def receive(self):
+    def receive(self, timeout=None):
         chunks = []
         bytes_recd = 0
+        self.connection.settimeout(timeout)
         while bytes_recd < self.msg_length:
             chunk = self.connection.recv(min(self.msg_length - bytes_recd, 2048))
             if chunk == b"":

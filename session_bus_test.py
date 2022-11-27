@@ -11,7 +11,7 @@
 
 import asyncio
 import sys
-from typing import Callable
+from typing import Callable, List
 import unittest
 from multiprocessing import Pipe, Process, set_start_method
 from multiprocessing.connection import Connection
@@ -52,6 +52,9 @@ class DemoClass:
 
 
 class TestCommon(unittest.IsolatedAsyncioTestCase):
+    bus: SessionBus
+    event_log: List
+
     async def asyncSetUp(self):
         # https://docs.python.org/3/library/multiprocessing.html#exchanging-objects-between-processes
         self.conn, child_conn = Pipe()
@@ -60,6 +63,8 @@ class TestCommon(unittest.IsolatedAsyncioTestCase):
         )
         self.p_remote.start()
         self.bus = self._get_bus()
+        self.event_log = []
+        self.bus.subscribe(lambda *args: self.event_log.append(args))
         assert await self._rcv() == "started"
         assert await self._rcv() == "connected"
         await self.bus.wait_for_connection(1.0)
@@ -69,11 +74,11 @@ class TestCommon(unittest.IsolatedAsyncioTestCase):
         self.p_remote.join()
         self.bus = None
 
-    def _get_bus(self):
+    def _get_bus(self) -> SessionBus:
         raise NotImplementedError
 
     @staticmethod
-    def _get_remote_bus():
+    def _get_remote_bus() -> SessionBus:
         raise NotImplementedError
 
     async def _rcv(self):
@@ -129,6 +134,9 @@ class TestCommon(unittest.IsolatedAsyncioTestCase):
         await o.test_signal.notify(2)
         self.assertEqual(2, store.get())
 
+    async def _test_bus_callbacks(self):
+        self.assertEqual(("connect",), self.event_log.pop())
+
 
 class TestClient(TestCommon):
     def _get_bus(self):
@@ -147,6 +155,9 @@ class TestClient(TestCommon):
     async def test_notify(self):
         await self._test_notify()
 
+    async def test_bus_callbacks(self):
+        await self._test_bus_callbacks()
+
 
 class TestServer(TestCommon):
     def _get_bus(self):
@@ -164,6 +175,9 @@ class TestServer(TestCommon):
 
     async def test_notify(self):
         await self._test_notify()
+
+    async def test_bus_callbacks(self):
+        await self._test_bus_callbacks()
 
 
 if __name__ == "__main__":
