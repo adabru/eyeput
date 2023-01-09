@@ -73,7 +73,7 @@ class App(QObject):
         self.widget.setGeometry(get_screen_geometry())
         self.widget.setFocusPolicy(Qt.NoFocus)
 
-        self.grid_widget = LabelGrid(self.widget, get_screen_geometry())
+        self.grid_widget = LabelGrid(self.widget, get_screen_geometry(), self.tags)
         self.grid_widget.hide()
         self.grid_widget.action_signal.connect(self.on_action)
 

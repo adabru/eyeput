@@ -34,11 +34,11 @@ class GridLines(QWidget):
         dx = int(self.geometry.width() / Tiles.x)
         dy = int(self.geometry.height() / Tiles.y)
 
-        # horizontal
+        # horizontal lines
         for i in range(3):
             painter.drawRect(0, i * 2 * dy, self.geometry.width(), 2 * dy)
 
-        # vertical
+        # vertical lines
         for i in range(3):
             painter.drawRect(i * 4 * dx, 0, 4 * dx, self.geometry.height())
 
@@ -49,8 +49,9 @@ class LabelGrid(QWidget):
     hover_item = None
     action_signal = Signal(object, object, bool)
 
-    def __init__(self, parent, geometry):
+    def __init__(self, parent, geometry, tags):
         super().__init__(parent)
+        self.tags = tags
         self.setGeometry(geometry)
         self.setFocusPolicy(Qt.NoFocus)
 
@@ -148,6 +149,8 @@ class LabelGrid(QWidget):
                 label.setToggled(True)
             elif label.id in self.state.modifiers:
                 label.setToggled(True)
+            elif type(item) is TagAction:
+                label.setToggled(self.tags.has(item.tag))
 
         for label in self.labels.values():
             if label.id == None:

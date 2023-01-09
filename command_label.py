@@ -62,6 +62,10 @@ class CommandLabel(QLabel):
             painter.setBrush(Colors.circle_activated)
             painter.setPen(Colors.circle_activated)
             painter.drawRect(self.rect())
+        elif self.toggled:
+            painter.setBrush(Colors.circle_toggled)
+            painter.setPen(Colors.circle_toggled)
+            painter.drawRect(self.rect())
 
         # draw image
         if self.pixmap:
@@ -92,8 +96,6 @@ class CommandLabel(QLabel):
         painter.setPen(Colors.circle_border)
         if self.activated:
             painter.setBrush(Colors.circle_activated)
-        elif self.toggled:
-            painter.setBrush(Colors.circle_toggled)
         elif self.hovered:
             painter.setBrush(Colors.circle_hovered)
         else:
