@@ -285,6 +285,9 @@ tiles = {
         "pause_mode": SetModeAction("pause", None, 2, 0, Modes.paused),
         "debug_gaze": InternalAction("👁", None, 3, 0, "debug_gaze"),
         "follow_tag": TagAction("follow", None, 4, 0, "follow", "toggle"),
+        "follow_until_click_tag": TagAction(
+            "click", None, 5, 0, "follow_until_click", "toggle"
+        ),
         # "calibration": SetModeAction("cal", None, 3, 0, Modes.calibration),
     },
 }

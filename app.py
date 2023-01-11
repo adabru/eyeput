@@ -9,10 +9,10 @@ from settings import *
 from util import *
 from hotkey_thread import HotḱeyThread
 from gaze_thread import *
-from bus_thread import *
 from gaze_filter import *
 from gaze_calibration import *
 from activation import *
+from shared_tags import *
 from gaze_pointer import GazePointer
 from label_grid import *
 from status import *
@@ -41,8 +41,12 @@ class App(QObject):
     # currPos = QPointF(0, 0)
     # lastPos = QPointF(0, 0)
 
-    def __init__(self):
+    executor_signal = Signal(str, object)
+    tag_changed_signal = Signal(str, bool)
+
+    def __init__(self, bus):
         super().__init__()
+        self.bus = bus
 
         self.qapp = QApplication(sys.argv)
         # design flaw, see https://stackoverflow.com/q/4938723/6040478
@@ -92,7 +96,16 @@ class App(QObject):
 
         self.debug_gaze = DebugGaze(self.widget)
 
-        self.tags.tag_changed.subscribe(self.on_tag_changed)
+        self.tag_sharing = TagSharing(self.tags, self.bus, "eyeput.tags", "talon.tags")
+        self.tag_changed_signal.connect(self.on_tag_changed, Qt.QueuedConnection)
+        self.tags.tag_changed.subscribe(self.tag_changed_signal.emit)
+
+        self.executor_signal.connect(self.on_executor_command, Qt.QueuedConnection)
+        self.bus.schedule(
+            self.bus.subscribe_signal(
+                "executor", "command_received", self.executor_signal.emit
+            )
+        )
 
         # self.graph = Graph()
         # self.graph.setup()
@@ -281,16 +294,21 @@ class App(QObject):
 
     #     self.lastPos = self.currPos
 
-    def on_tag_changed(self, tag, value):
-        if QThread.currentThread() != self.thread():
-            # couple bus session with qt app
-            print("remote")
-            return
+    @Slot(str, object)
+    def on_executor_command(self, command_id, data):
+        if command_id == "left_click" and self.tags.has("follow_until_click"):
+            self.tags.unset_tag("follow_until_click")
+            self.tags.unset_tag("follow")
 
-        if value and not self.tags.has(tag):
-            self.tags.set_tag(tag)
-        elif not value and self.tags.has(tag):
-            self.tags.unset_tag(tag)
+    @Slot(str, bool)
+    def on_tag_changed(self, tag, value):
+        if tag == "follow" and value == False:
+            self.tags.unset_tag("follow_until_click")
+        elif tag == "follow_until_click" and value == True:
+            self.tags.set_tag("follow")
+
+        if self.grid_widget.isVisible():
+            self.grid_widget.update_grid()
 
     def run(self):
         hotkey_thread = HotḱeyThread()
@@ -299,9 +317,6 @@ class App(QObject):
         gaze_thread = GazeThread(self.pause_lock)
         gaze_thread.gaze_signal.connect(self.on_gaze, Qt.QueuedConnection)
 
-        bus_thread = BusThread(self.tags)
-
         hotkey_thread.start()
         gaze_thread.start()
-        bus_thread.start()
         self.qapp.exec_()

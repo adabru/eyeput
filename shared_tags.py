@@ -71,14 +71,12 @@ class TagSharing:
     bus: SessionBus
     register_name: str
     peer_name: str
-    asyncio_loop: asyncio.AbstractEventLoop
 
-    def __init__(self, tags, bus, register_name, peer_name, asyncio_loop):
+    def __init__(self, tags, bus, register_name, peer_name):
         self.tags = tags
         self.bus = bus
         self.register_name = register_name
         self.peer_name = peer_name
-        self.asyncio_loop = asyncio_loop
         self.proxy = None
         self.populate_future = None
         self.bus.subscribe(self.bus_event)
@@ -101,15 +99,7 @@ class TagSharing:
             self.proxy = None
             if self.populate_future:
                 self.populate_future.cancel()
-            self.populate_future = self._schedule(self.populate_bus())
-
-    def _exception_handler(self, future):
-        future.result()
-
-    def _schedule(self, coroutine):
-        future = asyncio.run_coroutine_threadsafe(coroutine, self.asyncio_loop)
-        future.add_done_callback(self._exception_handler)
-        return future
+            self.populate_future = self.bus.schedule(self.populate_bus())
 
     def remote_tag_changed(self, tag: str, value: bool):
         # avoid feedback loop
@@ -118,4 +108,4 @@ class TagSharing:
         self.tags.set_tag_value(tag, value)
 
     def local_tag_changed(self, tag: str, value: bool):
-        self._schedule(self.tag_changed.notify(tag, value))
+        self.bus.schedule(self.tag_changed.notify(tag, value))

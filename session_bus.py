@@ -13,6 +13,7 @@
 
 
 import asyncio
+from concurrent.futures import Future
 from inspect import getmembers
 import logging
 import time
@@ -440,6 +441,8 @@ class SessionBus:
     timeout: float
     # Listeners for connection and register events
     bus_listeners: List[Callable[..., None]]
+    # The event loop this bus is running in
+    asyncio_loop: asyncio.AbstractEventLoop
 
     def __init__(
         self,
@@ -452,8 +455,21 @@ class SessionBus:
         self.client_only = client_only
         self.server_only = server_only
         self.timeout = timeout
-        self.is_connected = asyncio.get_running_loop().create_future()
         self.bus_listeners = []
+        try:
+            self.asyncio_loop = asyncio.get_running_loop()
+            self.is_connected = asyncio.get_running_loop().create_future()
+            self._start()
+        except RuntimeError:
+            # no event loop running
+            _debug_print(
+                1,
+                "Bus created without an event loop running. Remember to call async_init.",
+            )
+
+    def async_init(self):
+        self.asyncio_loop = asyncio.get_running_loop()
+        self.is_connected = asyncio.get_running_loop().create_future()
         self._start()
 
     def _exception(self, io_task: asyncio.Task):
@@ -606,6 +622,13 @@ class SessionBus:
     async def inspect_interface(self, bus_name: str):
         await self.wait_for_connection(timeout=self.timeout)
         return await self.connection.inspect_interface(bus_name)
+
+    def schedule(self, future: asyncio.Future) -> Future:
+        """Utility function for bus users that need to separate bus thread from other threads."""
+        _future = asyncio.run_coroutine_threadsafe(future, self.asyncio_loop)
+        # placeholder that consumes exceptions
+        _future.add_done_callback(lambda future: future.result())
+        return _future
 
 
 class BusProxy:

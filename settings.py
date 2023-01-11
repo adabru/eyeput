@@ -1,8 +1,6 @@
 from PySide2.QtGui import QColor
 from PySide2.QtCore import QMarginsF
 
-# DEFAULT: True - can be deactivated when debugging
-activate_keypress = True
 
 # The gaze may flicker. This is the threshold to acknowledge a border crossing between two areas.
 border_threshold = QMarginsF(0.015, 0.015, 0.015, 0.015)

@@ -7,7 +7,6 @@ from pynput.mouse import Button, Controller
 # https://github.com/boppreh/keyboard
 import keyboard
 
-from settings import *
 
 mouse = Controller()
 
@@ -35,9 +34,6 @@ def scroll(amount):
 
 
 def press_key(keycode):
-    if not activate_keypress:
-        print("WARN: keypresses are deactivated in settings!")
-        return
     # activate keyboard
     keyboard.press_and_release("shift")
     time.sleep(0.02)
