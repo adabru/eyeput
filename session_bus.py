@@ -19,7 +19,7 @@ import logging
 import time
 import os
 from pathlib import Path
-from typing import Callable, Dict, List, Tuple
+from typing import Callable, Dict, List, Tuple, Union
 from random import random
 import json
 
@@ -118,7 +118,7 @@ class _Connection:
         elif "method" in message:
             await self._handle_notification(peer_id, message)
 
-    async def start(self, socket_path: Path):
+    async def start(self, socket_path: Union[int, str]):
         raise NotImplementedError
 
     async def serve(self):
@@ -229,11 +229,16 @@ class _Connection:
 
 
 class _Client(_Connection):
-    async def start(self, socket_path: Path):
+    async def start(self, socket_path: Union[int, str]):
         try:
             # client has only one peer
             peer_id = 0
-            self.peers[peer_id] = await asyncio.open_unix_connection(socket_path)
+            if isinstance(socket_path, Path):
+                self.peers[peer_id] = await asyncio.open_unix_connection(socket_path)
+            elif isinstance(socket_path, int):
+                self.peers[peer_id] = await asyncio.open_connection(
+                    "::1", socket_path
+                )
         except (ConnectionRefusedError, FileNotFoundError) as e:
             raise NoServerError()
 
@@ -331,18 +336,23 @@ class _Server(_Connection):
             self._unregister_client(peer_id)
             writer.close()
 
-    async def start(self, socket_path: Path):
-        mask = os.umask(~0o662)
-        try:
-            socket_path.unlink()
-        except OSError:
-            if socket_path.exists():
-                raise
-        os.umask(mask)
-        # https://github.com/python/cpython/blob/1a6bacb31f7b49c244a6cc3ff0fa7f71a82412ef/Lib/asyncio/unix_events.py#L282
-        self.server = await asyncio.start_unix_server(
-            self._handle_client, socket_path, start_serving=False
-        )
+    async def start(self, socket_path: Union[int, Path]):
+        if isinstance(socket_path, Path):
+            mask = os.umask(~0o662)
+            try:
+                socket_path.unlink()
+            except OSError:
+                if socket_path.exists():
+                    raise
+            os.umask(mask)
+            # https://github.com/python/cpython/blob/1a6bacb31f7b49c244a6cc3ff0fa7f71a82412ef/Lib/asyncio/unix_events.py#L282
+            self.server = await asyncio.start_unix_server(
+                self._handle_client, socket_path, start_serving=False
+            )
+        elif isinstance(socket_path, int):
+            self.server = await asyncio.start_server(
+                self._handle_client, "::1", socket_path, start_serving=False
+            )
 
     async def serve(self):
         async with self.server:
@@ -430,7 +440,7 @@ class SessionBus:
     # Don't try to connect as client
     server_only: bool
     # All applications with the same path connect to the same bus
-    socket_path: Path
+    socket_path: Union[int, str]
     # Set to true when the connection is successful
     is_connected: asyncio.Future[bool]
     # The listening task
@@ -446,12 +456,15 @@ class SessionBus:
 
     def __init__(
         self,
-        socket_path: str,
+        socket_path: Union[int, str],
         client_only: bool = False,
         server_only: bool = False,
         timeout: float = 1.0,
     ):
-        self.socket_path = Path(socket_path)
+        if isinstance(socket_path, str):
+            self.socket_path = Path(socket_path)
+        elif isinstance(socket_path, int):
+            self.socket_path = socket_path
         self.client_only = client_only
         self.server_only = server_only
         self.timeout = timeout
