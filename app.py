@@ -78,7 +78,7 @@ class App(QObject):
         self.widget.setFocusPolicy(Qt.NoFocus)
 
         self.grid_widget = LabelGrid(self.widget, get_screen_geometry(), self.tags)
-        self.grid_widget.hide()
+        # self.grid_widget.hide()
         self.grid_widget.action_signal.connect(self.on_action)
 
         self.status_widget = Status(self.widget, self.mode)
@@ -150,6 +150,7 @@ class App(QObject):
             },
             Modes.scrolling: {
                 "on_blink": [self.on_blink],
+                "on_position": [self.grid_widget.on_gaze],
             },
             Modes.calibration: {
                 "on_frame": [self.gaze_calibration.on_frame],

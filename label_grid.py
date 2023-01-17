@@ -29,7 +29,7 @@ class GridLines(QWidget):
 
     def paintEvent(self, event):
         painter = QPainter(self)
-        painter.setPen(Colors.text_label)
+        painter.setPen(Colors.grid_lines)
 
         dx = int(self.geometry.width() / Tiles.x)
         dy = int(self.geometry.height() / Tiles.y)
@@ -56,7 +56,7 @@ class LabelGrid(QWidget):
         self.setFocusPolicy(Qt.NoFocus)
 
         self.hide_timer = QTimer(self)
-        self.hide_timer.timeout.connect(lambda: self.activate("_hide"))
+        self.hide_timer.timeout.connect(lambda: self.activate("empty"))
         self.hide_timer.setSingleShot(True)
 
         self.hover_timer = QTimer(self)
@@ -137,7 +137,9 @@ class LabelGrid(QWidget):
             label.setToggled(False)
             # self.hoverItem.setHovered(False)
 
-        for key, item in tiles[self.state.layer].items():
+        shown_labels = tiles[self.state.layer] | tiles["always"]
+
+        for key, item in shown_labels.items():
             label = self.labels[(item.x, item.y)]
             label.id = key
             label.setItem(item)
@@ -158,6 +160,11 @@ class LabelGrid(QWidget):
 
     @Slot()
     def select_item(self, hide=None):
+        if self.hover_item == None or self.hover_item.id == None:
+            self.action_signal.emit(None, None, hide)
+            return
+
+        log_info(self.hover_item)
         log_info("selectItem: " + self.hover_item.id)
         self.hover_timer.stop()
         self.hover_item.activate()

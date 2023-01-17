@@ -147,9 +147,9 @@ tiles = {
         "tab": KeyAction("⇥", None, 8, 5, "tab"),
         "enter": KeyAction("↲", None, 9, 5, "enter"),
         "slash": KeyAction("/", None, 10, 5, "shift+7"),
-        "hold": InternalAction("∞", None, 11, 5, "hold"),
-        "keyboard2": GridLayerAction("➁", None, 12, 5, "keyboard2"),
-        "textCmds": GridLayerAction("➂", None, 13, 5, "textCmds"),
+        # "hold": InternalAction("∞", None, 11, 5, "hold"),
+        # "keyboard2": GridLayerAction("➁", None, 12, 5, "keyboard2"),
+        # "textCmds": GridLayerAction("➂", None, 13, 5, "textCmds"),
     },
     "keyboard2": {
         # row 0
@@ -206,9 +206,9 @@ tiles = {
         "F11": KeyAction("F11", None, 10, 4),
         "F12": KeyAction("F12", None, 11, 4),
         # row 5
-        "hold": InternalAction("∞", None, 11, 5, "hold"),
-        "keyboard1": GridLayerAction("➀", None, 12, 5, "keyboard1"),
-        "textCmds": GridLayerAction("➂", None, 13, 5, "textCmds"),
+        # "hold": InternalAction("∞", None, 11, 5, "hold"),
+        # "keyboard1": GridLayerAction("➀", None, 12, 5, "keyboard1"),
+        # "textCmds": GridLayerAction("➂", None, 13, 5, "textCmds"),
     },
     "textCmds": {
         # row 0
@@ -227,9 +227,9 @@ tiles = {
         # row 3
         # row 4
         # row 5
-        "hold": InternalAction("∞", None, 11, 5, "hold"),
-        "keyboard1": GridLayerAction("➀", None, 12, 5, "keyboard1"),
-        "keyboard2": GridLayerAction("➁", None, 13, 5, "keyboard2"),
+        # "hold": InternalAction("∞", None, 11, 5, "hold"),
+        # "keyboard1": GridLayerAction("➀", None, 12, 5, "keyboard1"),
+        # "keyboard2": GridLayerAction("➁", None, 13, 5, "keyboard2"),
     },
     "apps": {
         # row 0
@@ -290,6 +290,12 @@ tiles = {
         ),
         # "calibration": SetModeAction("cal", None, 3, 0, Modes.calibration),
     },
+    "empty": {},
+    "always": {
+        "follow_until_click_tag": TagAction(
+            "click", None, 13, 5, "follow_until_click", "toggle"
+        ),
+    },
 }
 
 
@@ -346,8 +352,9 @@ blink_commands = {
         (".r", Zone.tl): GridLayerAction("", None, 0, 0, "eye_modes"),
         (". r", Zone.inside): BlinkAction("", None, 0, 0, "scroll_up"),
         (" r", Zone.inside): BlinkAction("", None, 0, 0, "scroll_up"),
-        (".l", Zone.inside): BlinkAction("", None, 0, 0, "scroll_down"),
+        (" l", Zone.inside): BlinkAction("", None, 0, 0, "scroll_down"),
         (" ", Zone.any): BlinkAction("", None, 0, 0, "scroll_stop"),
         (".", Zone.any): BlinkAction("", None, 0, 0, "scroll_stop"),
+        (".l", Zone.inside): BlinkAction("", None, 0, 0, "select_and_hold"),
     },
 }

@@ -26,6 +26,7 @@ class Tiles:
 
 
 class Colors:
+    grid_lines = QColor(0, 0, 0, 30)
     text_label = QColor(0, 0, 0, 100)
     text_status = QColor(0, 0, 0, 255)
     item = "#88f0f0ff"
