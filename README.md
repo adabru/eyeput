@@ -16,6 +16,11 @@ sudo ln -s $PWD/eyeput.sh /usr/local/bin/eyeput
 # use your xkb layout as default console keymap
 sudo sh -c "echo KEYMAP=de-latin1 > /etc/vconsole.conf"
 
+# to get key codes, run
+python -m keyboard /dev/input/event*
+# or
+dumpkeys --keys-only
+
 # allow access to virtual keyboard
 sudo usermod -a -G tty,input $USER
 ```

@@ -9,7 +9,7 @@ from tiles import *
 
 class GridState:
     # currently shown layer
-    layer: str = ""
+    layer: str = "empty"
     # keep grid open after selecting
     hold: bool = False
     # select on timeout
@@ -74,6 +74,7 @@ class LabelGrid(QWidget):
                 label.setFocusPolicy(Qt.NoFocus)
 
                 self.labels[(x, y)] = label
+        self.update_grid()
 
         self.lines = GridLines(self, geometry)
 
@@ -107,19 +108,12 @@ class LabelGrid(QWidget):
             return log_debug("invalid indices: " + str(xWidget) + ", " + str(yWidget))
 
         widget = self.labels[(xWidget, yWidget)]
-
-        if not widget.isVisible():
-            return log_debug("invisible")
-
-        if widget == self.hover_item:
-            return log_debug("same")
+        self.set_hovered_item(widget)
 
         if not after_activation and self.state.timeout:
             self.hover_timer.start(int(Times.element_selection * 1000))
         else:
             self.hover_timer.stop()
-
-        self.set_hovered_item(widget)
 
     def set_hovered_item(self, widget):
         if widget != self.hover_item:

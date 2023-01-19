@@ -189,6 +189,8 @@ class _Connection:
         await self._encode(message, self.peers[peer_id][1])
 
     def _local_register(self, bus_name: str, local_object: object):
+        if bus_name in self.local_objects:
+            _debug_print(1, "Name was already registered locally: " + bus_name)
         self.local_objects[bus_name] = local_object
 
     async def register(self, bus_name: str, local_object: object):
@@ -236,9 +238,7 @@ class _Client(_Connection):
             if isinstance(socket_path, Path):
                 self.peers[peer_id] = await asyncio.open_unix_connection(socket_path)
             elif isinstance(socket_path, int):
-                self.peers[peer_id] = await asyncio.open_connection(
-                    "::1", socket_path
-                )
+                self.peers[peer_id] = await asyncio.open_connection("::1", socket_path)
         except (ConnectionRefusedError, FileNotFoundError) as e:
             raise NoServerError()
 
@@ -607,6 +607,7 @@ class SessionBus:
                 value.bus_name = bus_name
                 if value.signal_name == None:
                     value.signal_name = key
+                    _debug_print(1, "signal registered: " + value.signal_name)
 
     async def get(self, bus_name: str) -> "BusProxy":
         await self.wait_for_connection(timeout=self.timeout)
@@ -666,6 +667,9 @@ class BusSignal:
 
     def __init__(self, signal_name: str = None):
         self.signal_name = signal_name
+        self.bus = None
 
     async def notify(self, *args):
+        if self.bus == None:
+            raise ConnectionError("object not registered yet")
         await self.bus.notify(self.bus_name, self.signal_name, args)

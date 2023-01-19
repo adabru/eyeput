@@ -122,19 +122,22 @@ class App(QObject):
         self.gaze_filter.set_blink_patterns(blink_commands[self.mode])
         if mode == Modes.calibration:
             self.gaze_calibration.start()
+        if mode != Modes.grid:
+            self.grid_widget.hide_delayed()
 
     def on_blink(self, blink, blink_position):
         if not blink:
             return
         assert blink in blink_commands[self.mode], self.mode + " " + blink
         command = blink_commands[self.mode][blink]
-        self.on_action(command, blink_position, True)
+        self.on_action(command, blink_position, False)
 
     @Slot(object)
     def on_gaze(self, input_frame: InputFrame):
         callbacks = {
             Modes.enabled: {
                 "on_blink": [self.on_blink],
+                "on_position": [self.grid_widget.on_gaze],
                 # "on_variance": [self.status_widget.on_variance],
             },
             Modes.cursor: {

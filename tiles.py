@@ -184,7 +184,7 @@ tiles = {
         "smaller": KeyAction("<", None, 6, 2),
         "greater": KeyAction(">", None, 7, 2, "shift+>"),
         "pipe": KeyAction("|", None, 8, 2, "alt gr+|"),
-        "questionmark": KeyAction("?", None, 9, 2, "shift+?"),
+        "questionmark": KeyAction("?", None, 9, 2, "shift+question"),
         # row 3
         "semicolon": KeyAction(";", None, 0, 3, "shift+;"),
         "colon": KeyAction(":", None, 1, 3, "shift+:"),
