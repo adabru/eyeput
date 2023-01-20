@@ -45,18 +45,6 @@ class Colors:
     eye_center = QColor("cyan")
 
 
-class Modes:
-    disabled = "disabled"
-    paused = "paused"
-    enabled = "enabled"
-    scrolling = "scrolling"
-    cursor = "cursor"
-    grid = "grid"
-    calibration = "calibration"
-    # pseudo mode
-    _previous = "_previous"
-
-
 class Times:
     # When looking outside the grid appears. But if the gaze stays outside, the grid disappears after this much seconds.
     out_of_screen = 0.5

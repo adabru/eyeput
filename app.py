@@ -31,10 +31,10 @@ class App(QObject):
     debug_gaze: DebugGaze
 
     activation = GridActivation()
-    mode = Modes.enabled
-    previous_mode = None
     pause_lock = QMutex()
     tags = Tags()
+    # maps blink pattern to command
+    blink_mapping = {}
 
     scroll_timer = None
     # click_timer = None
@@ -81,7 +81,7 @@ class App(QObject):
         # self.grid_widget.hide()
         self.grid_widget.action_signal.connect(self.on_action)
 
-        self.status_widget = Status(self.widget, self.mode)
+        self.status_widget = Status(self.widget, "-")
 
         self.gaze_pointer = GazePointer(self.widget)
 
@@ -89,7 +89,8 @@ class App(QObject):
         self.gaze_calibration.end_signal.connect(self.on_calibration_end)
         self.gaze_filter = GazeFilter(self.gaze_calibration)
 
-        self.set_mode(Modes.enabled)
+        # initialize blink patterns
+        self.on_tag_changed("init", True)
 
         self.widget.setWindowTitle("eyeput")
         self.widget.show()
@@ -110,60 +111,30 @@ class App(QObject):
         # self.graph = Graph()
         # self.graph.setup()
 
-    def set_mode(self, mode):
-        if mode == Modes._previous:
-            mode = self.previous_mode
-            self.previous_mode = Modes.paused
-        elif self.previous_mode != self.mode:
-            self.previous_mode = self.mode
-        self.mode = mode
-        self.status_widget.set_mode(self.mode)
-        self.scroll_timer.stop()
-        self.gaze_filter.set_blink_patterns(blink_commands[self.mode])
-        if mode == Modes.calibration:
-            self.gaze_calibration.start()
-        if mode != Modes.grid:
-            self.grid_widget.hide_delayed()
-
     def on_blink(self, blink, blink_position):
         if not blink:
             return
-        assert blink in blink_commands[self.mode], self.mode + " " + blink
-        command = blink_commands[self.mode][blink]
+        assert blink in self.blink_mapping, blink
+        command = self.blink_mapping[blink]
         self.on_action(command, blink_position, False)
 
     @Slot(object)
     def on_gaze(self, input_frame: InputFrame):
         callbacks = {
-            Modes.enabled: {
-                "on_blink": [self.on_blink],
-                "on_position": [self.grid_widget.on_gaze],
-                # "on_variance": [self.status_widget.on_variance],
-            },
-            Modes.cursor: {
-                "on_blink": [self.on_blink],
-                "on_position": [self.gaze_pointer.on_gaze],
-            },
-            Modes.grid: {
-                "on_blink": [self.on_blink],
-                "on_position": [self.grid_widget.on_gaze],
-            },
-            Modes.paused: {
-                "on_blink": [self.on_blink],
-            },
-            Modes.scrolling: {
-                "on_blink": [self.on_blink],
-                "on_position": [self.grid_widget.on_gaze],
-            },
-            Modes.calibration: {
+            "on_blink": [self.on_blink],
+            "on_position": [self.grid_widget.on_gaze],
+            # "on_position": [self.gaze_pointer.on_gaze],
+            # "on_variance": [self.status_widget.on_variance],
+        }
+        if self.tags.has("calibration"):
+            callbacks = {
                 "on_frame": [self.gaze_calibration.on_frame],
                 "on_blink": [self.on_blink],
-            },
-        }
-        position_callback = callbacks[self.mode].get("on_position", [])
-        blink_callback = callbacks[self.mode].get("on_blink", [])
-        variance_callback = callbacks[self.mode].get("on_variance", [])
-        frame_callback = callbacks[self.mode].get("on_frame", [])
+            }
+        position_callback = callbacks.get("on_position", [])
+        blink_callback = callbacks.get("on_blink", [])
+        variance_callback = callbacks.get("on_variance", [])
+        frame_callback = callbacks.get("on_frame", [])
         if self.debug_gaze.isVisible():
             frame_callback.append(self.debug_gaze.on_frame)
         filtered_frame = self.gaze_filter.transform(
@@ -187,7 +158,7 @@ class App(QObject):
 
     @Slot()
     def on_calibration_end(self):
-        self.set_mode(Modes._previous)
+        self.tags.unset_tag("calibration")
 
     @Slot()
     def onHotkeyPressed(self):
@@ -212,17 +183,12 @@ class App(QObject):
             self.mouseMoveTime = time.time()
         elif type(item) is ShellAction:
             external.exec(item.cmd)
-        elif type(item) is InternalAction:
-            if item.id == "debug_gaze":
-                self.debug_gaze.setVisible(not self.debug_gaze.isVisible())
 
         # shared actions
         elif type(item) is GridLayerAction:
-            self.set_mode(Modes.grid)
+            self.tags.set_tag("grid")
             self.grid_widget.activate(item.layer)
             hide_grid = False
-        elif type(item) is SetModeAction:
-            self.set_mode(item.mode)
         elif type(item) is TagAction:
             match item.action:
                 case "set":
@@ -241,12 +207,12 @@ class App(QObject):
             #     self.gaze_pointer.on_gaze(position)
             if item.id == "mouse_start_move":
                 self.gaze_pointer.start_move(blink_position[0], blink_position[1])
-                self.set_mode(Modes.cursor)
+                self.tags.set_tag("cursor")
             elif item.id == "mouse_stop_move":
                 target_position = self.gaze_pointer.stop_move(
                     blink_position[0], blink_position[1]
                 )
-                self.set_mode(Modes.enabled)
+                self.tags.unset_tag("cursor")
                 external.mouse_move(target_position.x(), target_position.y())
             elif item.id == "left_click":
                 external.left_click()
@@ -263,8 +229,7 @@ class App(QObject):
             elif item.id == "calibration_next":
                 self.gaze_calibration.next_point()
             elif item.id == "calibration_cancel":
-                self.gaze_calibration.cancel()
-                self.set_mode(Modes._previous)
+                self.tags.unset_tag("calibration")
             elif item.id == "select_and_hold":
                 hide_grid = False
                 self.grid_widget.on_gaze(blink_position[0], blink_position[1])
@@ -272,11 +237,10 @@ class App(QObject):
             elif item.id == "select_and_hide":
                 hide_grid = False
                 self.grid_widget.on_gaze(blink_position[0], blink_position[1])
-                self.set_mode(Modes._previous)
                 self.grid_widget.select_item(True)
 
         if hide_grid:
-            self.grid_widget.hide_delayed()
+            self.tags.unset_tag("grid")
 
     @Slot()
     def scroll_step(self):
@@ -310,6 +274,36 @@ class App(QObject):
             self.tags.unset_tag("follow_until_click")
         elif tag == "follow_until_click" and value == True:
             self.tags.set_tag("follow")
+        elif tag == "debug_gaze":
+            self.debug_gaze.setVisible(value)
+        elif tag == "scrolling" and not value:
+            self.scroll_timer.stop()
+        elif tag == "grid":
+            self.scroll_timer.stop()
+            if not value:
+                self.grid_widget.hide_delayed()
+        elif tag == "calibration":
+            if value:
+                self.gaze_calibration.start()
+            else:
+                self.gaze_calibration.cancel()
+
+        self.blink_mapping = {}
+        if self.tags.has("calibration"):
+            # exclusive
+            self.blink_mapping = blink_commands["tag_calibration"]
+        elif self.tags.has("pause"):
+            # exclusive
+            self.blink_mapping = blink_commands["tag_pause"]
+        else:
+            for tag in blink_commands:
+                if tag[4:] in self.tags:
+                    if tag[4:] == "scrolling" and self.tags.has("grid"):
+                        continue
+                    # prevent overwrite
+                    self.blink_mapping |= blink_commands[tag] | self.blink_mapping
+            self.blink_mapping |= blink_commands["default"] | self.blink_mapping
+        self.gaze_filter.set_blink_patterns(self.blink_mapping)
 
         if self.grid_widget.isVisible():
             self.grid_widget.update_grid()

@@ -20,14 +20,9 @@ class InternalAction(Action):
 
 
 @dataclass
-class SetModeAction(Action):
-    mode: str
-
-
-@dataclass
 class TagAction(Action):
     tag: str
-    action: str
+    action: str = "toggle"
 
 
 @dataclass
@@ -280,21 +275,15 @@ tiles = {
     },
     "eye_modes": {
         # row 0
-        "scroll_mode": SetModeAction("↕", None, 0, 0, Modes.scrolling),
-        "click_mode": SetModeAction("🖰", None, 1, 0, Modes.enabled),
-        "pause_mode": SetModeAction("pause", None, 2, 0, Modes.paused),
-        "debug_gaze": InternalAction("👁", None, 3, 0, "debug_gaze"),
-        "follow_tag": TagAction("follow", None, 4, 0, "follow", "toggle"),
-        "follow_until_click_tag": TagAction(
-            "click", None, 5, 0, "follow_until_click", "toggle"
-        ),
-        # "calibration": SetModeAction("cal", None, 3, 0, Modes.calibration),
+        "pause_tag": TagAction("pause", None, 2, 0, "pause"),
+        "debug_gaze": TagAction("👁", None, 3, 0, "debug_gaze"),
+        "follow_tag": TagAction("follow", None, 4, 0, "follow"),
     },
     "empty": {},
     "always": {
-        "follow_until_click_tag": TagAction(
-            "click", None, 13, 5, "follow_until_click", "toggle"
-        ),
+        "scrolling_tag": TagAction("↕", None, 0, 5, "scrolling"),
+        "unpause_tag": TagAction("unpause", None, 1, 5, "pause"),
+        "follow_until_click_tag": TagAction("🖰", None, 13, 5, "follow_until_click"),
     },
 }
 
@@ -318,43 +307,38 @@ Zone.c = Zone((0.3, 0.3), (0.6, 0.6))
 Zone.inside = Zone((-0.1, -0.1), (1.1, 1.1))
 Zone.any = Zone((-100.0, -100.0), (100.0, 100.0))
 
+# commands further up have precedence
 blink_commands = {
-    Modes.enabled: {
-        (". . . .", Zone.any): SetModeAction("cal", None, 3, 0, Modes.calibration),
-        (".r", Zone.c): GridLayerAction("", None, 0, 0, "keyboard1"),
-        (".r", Zone.tr): GridLayerAction("", None, 0, 0, "keyboard2"),
-        (".r", Zone.tl): GridLayerAction("", None, 0, 0, "eye_modes"),
-        (".l", Zone.inside): BlinkAction("", None, 0, 0, "mouse_start_move"),
-        # ". .": "mouse_move",
-        # ".r.": "left_click",
-    },
-    Modes.cursor: {
+    "tag_cursor": {
         (".", Zone.any): BlinkAction("", None, 0, 0, "mouse_stop_move"),
     },
-    Modes.grid: {
-        (" ", Zone.any): SetModeAction("", None, 0, 0, Modes._previous),
-        (".r", Zone.inside): BlinkAction("", None, 0, 0, "select_and_hold"),
-        (".l", Zone.inside): BlinkAction("", None, 0, 0, "select_and_hide"),
-    },
-    Modes.calibration: {
+    "tag_calibration": {
         (". . .", Zone.any): BlinkAction("", None, 0, 0, "calibration_cancel"),
         (". .", Zone.any): BlinkAction("", None, 0, 0, "calibration_next"),
     },
-    Modes.paused: {
-        (".r", Zone.tl): GridLayerAction("", None, 0, 0, "eye_modes"),
-        (". . . .", Zone.any): SetModeAction("cal", None, 3, 0, Modes.calibration),
+    "tag_pause": {
+        (".r", Zone.inside): BlinkAction("", None, 0, 0, "select_and_hold"),
+        (".l", Zone.inside): BlinkAction("", None, 0, 0, "select_and_hold"),
     },
-    Modes.scrolling: {
-        (". . . .", Zone.any): SetModeAction("cal", None, 3, 0, Modes.calibration),
+    "tag_grid": {
+        (" ", Zone.any): TagAction("↕", None, 0, 5, "grid", "unset"),
+        (".r", Zone.inside): BlinkAction("", None, 0, 0, "select_and_hold"),
+        (".l", Zone.inside): BlinkAction("", None, 0, 0, "select_and_hide"),
+    },
+    "tag_scrolling": {
+        (". r", Zone.inside): BlinkAction("", None, 0, 0, "scroll_up"),
+        (" r", Zone.inside): BlinkAction("", None, 0, 0, "scroll_up"),
+        (". l", Zone.inside): BlinkAction("", None, 0, 0, "scroll_down"),
+        (" l", Zone.inside): BlinkAction("", None, 0, 0, "scroll_down"),
+        (" ", Zone.any): BlinkAction("", None, 0, 0, "scroll_stop"),
+        (".", Zone.any): BlinkAction("", None, 0, 0, "scroll_stop"),
+    },
+    "default": {
         (".r", Zone.c): GridLayerAction("", None, 0, 0, "keyboard1"),
         (".r", Zone.tr): GridLayerAction("", None, 0, 0, "keyboard2"),
         (".r", Zone.br): GridLayerAction("", None, 0, 0, "textCmds"),
         (".r", Zone.tl): GridLayerAction("", None, 0, 0, "eye_modes"),
-        (". r", Zone.inside): BlinkAction("", None, 0, 0, "scroll_up"),
-        (" r", Zone.inside): BlinkAction("", None, 0, 0, "scroll_up"),
-        (" l", Zone.inside): BlinkAction("", None, 0, 0, "scroll_down"),
-        (" ", Zone.any): BlinkAction("", None, 0, 0, "scroll_stop"),
-        (".", Zone.any): BlinkAction("", None, 0, 0, "scroll_stop"),
         (".l", Zone.inside): BlinkAction("", None, 0, 0, "select_and_hold"),
+        (".r", Zone.inside): BlinkAction("", None, 0, 0, "select_and_hold"),
     },
 }

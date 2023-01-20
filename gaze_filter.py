@@ -50,9 +50,9 @@ class BlinkFilter:
         self.prefix_tree = {}
         self.blink_zones = {}
         for p, zone in blink_patterns:
-            self.blink_zones.setdefault(p, set()).add(zone)
+            self.blink_zones.setdefault(p, {})[zone] = None
             for i in range(1, len(p) + 1):
-                self.prefix_tree.setdefault(p[:i], set()).add(p)
+                self.prefix_tree.setdefault(p[:i], {})[p] = None
 
     def check_flip(self, t, buffer, eye):
         current_flip = self.decode(self.flips[-1])
@@ -111,6 +111,7 @@ class BlinkFilter:
             return self.checked_position(t, flips, flip_time, filtered_position)
         # preemptively cancel unregistered blink and timed out blink
         if not self.flips in self.prefix_tree or dt > self.latency:
+            # todo: check for sub pattern and issue it
             self.flips = self.flips[-1:]
             self.flip_times = self.flip_times[-1:]
         return (None, None)

@@ -38,6 +38,9 @@ class Tags:
         self.tags = set()
         self.tag_changed = Event()
 
+    def __iter__(self):
+        return iter(self.tags)
+
     def has(self, tag: str):
         return tag in self.tags
 
