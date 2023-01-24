@@ -133,20 +133,24 @@ class LabelGrid(QWidget):
 
         shown_labels = tiles[self.state.layer] | tiles["always"]
 
-        for key, item in shown_labels.items():
-            label = self.labels[(item.x, item.y)]
-            label.id = key
-            label.setItem(item)
-            label.setModifiers(self.state.modifiers)
-            label.setText(item.label)
-            label.show()
-            # special cases
-            if label.id == "hold" and self.state.hold:
-                label.setToggled(True)
-            elif label.id in self.state.modifiers:
-                label.setToggled(True)
-            elif type(item) is TagAction:
-                label.setToggled(self.tags.has(item.tag))
+        for group_id, (x, y) in shown_labels.items():
+            group = tile_groups[group_id]
+            for i, (tile_id, item) in enumerate(group["tiles"].items()):
+                label = self.labels[
+                    (x + (i % group["width"]), y + (int(i / group["width"])))
+                ]
+                label.id = tile_id
+                label.setItem(item)
+                label.setModifiers(self.state.modifiers)
+                label.setText(item.label)
+                label.show()
+                # special cases
+                if label.id == "hold" and self.state.hold:
+                    label.setToggled(True)
+                elif label.id in self.state.modifiers:
+                    label.setToggled(True)
+                elif type(item) is TagAction:
+                    label.setToggled(self.tags.has(item.tag))
 
         for label in self.labels.values():
             if label.id == None:
