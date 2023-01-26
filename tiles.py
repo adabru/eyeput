@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import os.path
 
 from PySide2.QtCore import QRectF, QPointF
@@ -49,6 +49,7 @@ class ShellAction(Action):
 @dataclass
 class GridLayerAction(Action):
     layer: str = None
+    modifiers: set = field(default_factory=set)
 
 
 tile_groups = {
@@ -294,6 +295,7 @@ class Zone:
 
 
 Zone.tl = Zone((-0.1, -0.1), (0.3, 0.3))
+Zone.l = Zone((-0.1, 0.3), (0.3, 0.6))
 Zone.tr = Zone((0.7, -0.1), (1.1, 0.3))
 Zone.br = Zone((0.7, 0.7), (1.1, 1.1))
 Zone.c = Zone((0.3, 0.3), (0.6, 0.6))
@@ -328,6 +330,7 @@ blink_commands = {
     },
     "default": {
         (".r", Zone.c): GridLayerAction("", None, "keyboard1"),
+        (".r", Zone.l): GridLayerAction("", None, "keyboard1", ("ctrl",)),
         (".r", Zone.tr): GridLayerAction("", None, "keyboard2"),
         (".r", Zone.br): GridLayerAction("", None, "textCmds"),
         (".r", Zone.tl): GridLayerAction("", None, "eye_modes"),

@@ -187,7 +187,7 @@ class App(QObject):
         # shared actions
         elif type(item) is GridLayerAction:
             self.tags.set_tag("grid")
-            self.grid_widget.activate(item.layer)
+            self.grid_widget.activate(item.layer, item.modifiers)
             hide_grid = False
         elif type(item) is TagAction:
             match item.action:

@@ -78,8 +78,10 @@ class LabelGrid(QWidget):
 
         self.lines = GridLines(self, geometry)
 
-    def activate(self, label):
+    def activate(self, label, modifiers=set()):
         if label != "_hide":
+            self.state.modifiers.clear()
+            self.state.modifiers.update(modifiers)
             self.set_layer(label)
             if not self.isVisible():
                 self.show()
