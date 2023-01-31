@@ -144,7 +144,10 @@ class LabelGrid(QWidget):
                 label.id = tile_id
                 label.setItems(actions)
                 label.setModifiers(self.state.modifiers)
-                label.setText(actions[0].label)
+                if self.tags.has("hide_labels"):
+                    label.setText("")
+                else:
+                    label.setText(actions[0].label)
                 label.show()
                 # special cases
                 if label.id == "hold" and self.state.hold:

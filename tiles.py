@@ -206,8 +206,9 @@ tile_groups = {
             "pause_tag": (TagAction("pause", None, "pause"), None),
             "debug_gaze": (TagAction("👁", None, "debug_gaze"), None),
             "follow_tag": (TagAction("follow", None, "follow"), None),
+            "hide_labels": (TagAction("labels", None, "hide_labels"), None),
         },
-        "width": 3,
+        "width": 4,
         "height": 1,
     },
     "always": {
