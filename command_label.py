@@ -10,7 +10,7 @@ from settings import *
 class CommandLabel(QLabel):
     modifiers = set()
     id = ""
-    item = None
+    items = None
     hovered = False
     toggled = False
     activated = False
@@ -22,10 +22,10 @@ class CommandLabel(QLabel):
         self.deactivate_timer = QTimer(self)
         self.deactivate_timer.timeout.connect(self._deactivate)
 
-    def setItem(self, item):
-        self.item = item
-        if self.item and self.item.img:
-            self.pixmap = QPixmap(self.item.img)
+    def setItems(self, items):
+        self.items = items
+        if self.items and self.items[0].img:
+            self.pixmap = QPixmap(self.items[0].img)
             if self.pixmap.height() == 0:
                 self.pixmap = QPixmap(
                     f"{os.path.dirname(__file__)}/resources/missing.png"

@@ -230,14 +230,22 @@ class App(QObject):
                 self.gaze_calibration.next_point()
             elif item.id == "calibration_cancel":
                 self.tags.unset_tag("calibration")
+            elif item.id == "select_0":
+                hide_grid = False
+                self.grid_widget.on_gaze(blink_position[0], blink_position[1])
+                self.grid_widget.select_item(0, False)
+            elif item.id == "select_1":
+                hide_grid = False
+                self.grid_widget.on_gaze(blink_position[0], blink_position[1])
+                self.grid_widget.select_item(1, False)
             elif item.id == "select_and_hold":
                 hide_grid = False
                 self.grid_widget.on_gaze(blink_position[0], blink_position[1])
-                self.grid_widget.select_item(False)
+                self.grid_widget.select_item(0, False)
             elif item.id == "select_and_hide":
                 hide_grid = False
                 self.grid_widget.on_gaze(blink_position[0], blink_position[1])
-                self.grid_widget.select_item(True)
+                self.grid_widget.select_item(0, True)
 
         if hide_grid:
             self.tags.unset_tag("grid")

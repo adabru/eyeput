@@ -137,29 +137,29 @@ class LabelGrid(QWidget):
 
         for group_id, (x, y) in shown_labels.items():
             group = tile_groups[group_id]
-            for i, (tile_id, item) in enumerate(group["tiles"].items()):
+            for i, (tile_id, actions) in enumerate(group["tiles"].items()):
                 label = self.labels[
                     (x + (i % group["width"]), y + (int(i / group["width"])))
                 ]
                 label.id = tile_id
-                label.setItem(item)
+                label.setItems(actions)
                 label.setModifiers(self.state.modifiers)
-                label.setText(item.label)
+                label.setText(actions[0].label)
                 label.show()
                 # special cases
                 if label.id == "hold" and self.state.hold:
                     label.setToggled(True)
                 elif label.id in self.state.modifiers:
                     label.setToggled(True)
-                elif type(item) is TagAction:
-                    label.setToggled(self.tags.has(item.tag))
+                elif type(actions[0]) is TagAction:
+                    label.setToggled(self.tags.has(actions[0].tag))
 
         for label in self.labels.values():
             if label.id == None:
                 label.hide()
 
     @Slot()
-    def select_item(self, hide=None):
+    def select_item(self, index=0, hide=None):
         if self.hover_item == None or self.hover_item.id == None:
             self.action_signal.emit(None, None, hide)
             return
@@ -168,6 +168,9 @@ class LabelGrid(QWidget):
         log_info("selectItem: " + self.hover_item.id)
         self.hover_timer.stop()
         self.hover_item.activate()
+
+        if index == 1 and self.hover_item.items[index] is None:
+            index = 0
 
         if hide == None:
             hide = not self.state.hold
@@ -183,10 +186,12 @@ class LabelGrid(QWidget):
                 self.state.modifiers.add(self.hover_item.id)
             self.update_grid()
 
-        elif type(self.hover_item.item) is KeyAction:
-            self.action_signal.emit(self.hover_item.item, self.state.modifiers, hide)
+        elif type(self.hover_item.items[index]) is KeyAction:
+            self.action_signal.emit(
+                self.hover_item.items[index], self.state.modifiers, hide
+            )
             self.state.modifiers.clear()
             self.update_grid()
 
         else:
-            self.action_signal.emit(self.hover_item.item, None, hide)
+            self.action_signal.emit(self.hover_item.items[index], None, hide)
