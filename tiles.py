@@ -172,6 +172,12 @@ tile_groups = {
                 KeyAction("/", None, "shift+7"),
                 KeyAction("\\", None, "alt gr+\\"),
             ),
+        },
+        "width": 10,
+        "height": 2,
+    },
+    "frequent_context": {
+        "tiles": {
             "copy": (
                 KeyAction("copy", None, "ctrl+c"),
                 KeyAction("paste", None, "ctrl+v"),
@@ -179,7 +185,7 @@ tile_groups = {
             "save": (KeyAction("save", None, "ctrl+s"), None),
         },
         "width": 10,
-        "height": 2,
+        "height": 1,
     },
     "function_keys": {
         "tiles": {
@@ -253,6 +259,7 @@ tiles = {
         "navigation": (10, 2),
         "control": (13, 0),
         "symbols": (0, 3),
+        "frequent_context": (9, 4),
     },
     "keyboard2": {"function_keys": (0, 0)},
     "textCmds": {"context": (0, 0)},
@@ -357,7 +364,9 @@ blink_commands = {
     },
     "default": {
         (".r", Zone.c): GridLayerAction("", None, "keyboard1"),
+        (".l", Zone.c): GridLayerAction("", None, "keyboard1", ("shift",)),
         (".r", Zone.l): GridLayerAction("", None, "keyboard1", ("ctrl",)),
+        (".l", Zone.l): GridLayerAction("", None, "keyboard1", ("ctrl", "shift")),
         (".r", Zone.tr): GridLayerAction("", None, "keyboard2"),
         (".r", Zone.br): GridLayerAction("", None, "textCmds"),
         (".r", Zone.tl): GridLayerAction("", None, "eye_modes"),
