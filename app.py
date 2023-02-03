@@ -5,6 +5,7 @@ import sys, signal, time
 from PySide2.QtWidgets import QApplication, QWidget
 from PySide2.QtCore import QObject, Slot, Qt, QTimer, QPoint, QPointF, QMutex
 
+from session_bus import BusProxy
 from settings import *
 from util import *
 from hotkey_thread import HotḱeyThread
@@ -41,6 +42,8 @@ class App(QObject):
     # currPos = QPointF(0, 0)
     # lastPos = QPointF(0, 0)
 
+    bus: SessionBus
+    executor: BusProxy
     executor_signal = Signal(str, object)
     tag_changed_signal = Signal(str, bool)
 
@@ -107,6 +110,7 @@ class App(QObject):
                 "executor", "command_received", self.executor_signal.emit
             )
         )
+        self.executor = self.bus.get_no_check("executor")
 
         # self.graph = Graph()
         # self.graph.setup()
@@ -183,6 +187,8 @@ class App(QObject):
             self.mouseMoveTime = time.time()
         elif type(item) is ShellAction:
             external.exec(item.cmd)
+        elif type(item) is TextAction:
+            self.bus.schedule(self.executor.call("execute", item.id))
 
         # shared actions
         elif type(item) is GridLayerAction:

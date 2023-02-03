@@ -1,6 +1,9 @@
 import subprocess
 import time
 
+# alt https://stackoverflow.com/a/38171680/6040478
+from PySide2.QtGui import QGuiApplication
+
 # https://github.com/moses-palmer/pynput
 from pynput.mouse import Button, Controller
 
@@ -42,3 +45,13 @@ def press_key(keycode):
 
 def exec(command):
     subprocess.Popen(command, shell=True)
+
+
+def get_clipboard():
+    clipboard = QGuiApplication.clipboard()
+    return clipboard.text()
+
+
+def set_clipboard(text):
+    clipboard = QGuiApplication.clipboard()
+    clipboard.setText(text)

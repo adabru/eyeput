@@ -29,6 +29,11 @@ class MouseAction(Action):
 
 
 @dataclass
+class TextAction(Action):
+    id: str
+
+
+@dataclass
 class BlinkAction(Action):
     id: str
 
@@ -237,6 +242,21 @@ tile_groups = {
         "width": 4,
         "height": 1,
     },
+    "dictation": {
+        "tiles": {
+            "capitalize": (TextAction("Aaa", None, "capitalize"), None),
+            "point": (
+                TextAction(".⎵", None, "point_space"),
+                TextAction(".⎵", None, "point_newline"),
+            ),
+            "comma": (
+                TextAction(",⎵", None, "comma_space"),
+                TextAction(",⎵", None, "comma_newline"),
+            ),
+        },
+        "width": 4,
+        "height": 1,
+    },
     "always": {
         "tiles": {
             "scrolling_tag": (TagAction("↕", None, "scrolling"), None),
@@ -247,6 +267,7 @@ tile_groups = {
             ),
             "hide_labels": (TagAction("labels", None, "hide_labels"), None),
             "disable_speech": (TagAction("🔇", None, "disable_speech"), None),
+            "german": (TagAction("DE", None, "german"), None),
         },
         "width": 10,
         "height": 1,
@@ -263,6 +284,7 @@ tiles = {
     },
     "keyboard2": {"function_keys": (0, 0)},
     "textCmds": {"context": (0, 0)},
+    "dictation": {"dictation": (0, 0)},
     # "apps": {
     #     # row 0
     #     "vsc-eyeput": (ShellAction(None),
@@ -332,6 +354,7 @@ Zone.tl = Zone((-0.1, -0.1), (0.3, 0.3))
 Zone.l = Zone((-0.1, 0.3), (0.3, 0.6))
 Zone.tr = Zone((0.7, -0.1), (1.1, 0.3))
 Zone.br = Zone((0.7, 0.7), (1.1, 1.1))
+Zone.r = Zone((0.7, 0.3), (1.1, 0.6))
 Zone.c = Zone((0.3, 0.3), (0.6, 0.6))
 Zone.inside = Zone((-0.1, -0.1), (1.1, 1.1))
 Zone.any = Zone((-100.0, -100.0), (100.0, 100.0))
@@ -369,6 +392,7 @@ blink_commands = {
         (".l", Zone.l): GridLayerAction("", None, "keyboard1", ("ctrl", "shift")),
         (".r", Zone.tr): GridLayerAction("", None, "keyboard2"),
         (".r", Zone.br): GridLayerAction("", None, "textCmds"),
+        (".r", Zone.r): GridLayerAction("", None, "dictation"),
         (".r", Zone.tl): GridLayerAction("", None, "eye_modes"),
         (".r", Zone.inside): BlinkAction("", None, "select_0"),
         (".l", Zone.inside): BlinkAction("", None, "select_1"),

@@ -609,6 +609,9 @@ class SessionBus:
                     value.signal_name = key
                     _debug_print(1, "signal registered: " + value.signal_name)
 
+    def get_no_check(self, bus_name: str) -> "BusProxy":
+        return BusProxy(self, bus_name)
+
     async def get(self, bus_name: str) -> "BusProxy":
         await self.wait_for_connection(timeout=self.timeout)
         proxy = BusProxy(self, bus_name)
