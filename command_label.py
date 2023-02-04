@@ -18,7 +18,7 @@ class CommandLabel(QLabel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.setStyleSheet(f"background-color: {Colors.item};")
+        self.setColor(Colors.item)
         self.deactivate_timer = QTimer(self)
         self.deactivate_timer.timeout.connect(self._deactivate)
 
@@ -33,6 +33,11 @@ class CommandLabel(QLabel):
 
     def setModifiers(self, modifiers):
         self.modifiers = modifiers
+        self.update()
+
+    def setColor(self, color: QColor):
+        self.setStyleSheet(f"background-color: {color.name(QColor.HexArgb)};")
+        # self.color = color
         self.update()
 
     def setHovered(self, value):

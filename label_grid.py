@@ -45,7 +45,7 @@ class GridLines(QWidget):
 
 class LabelGrid(QWidget):
     state = GridState()
-    labels = {}
+    labels: dict[tuple[int, int], CommandLabel] = {}
     hover_item = None
     action_signal = Signal(object, object, bool)
 
@@ -143,6 +143,7 @@ class LabelGrid(QWidget):
                 ]
                 label.id = tile_id
                 label.setItems(actions)
+                label.setColor(group.get("color", Colors.item))
                 label.setModifiers(self.state.modifiers)
                 if self.tags.has("hide_labels"):
                     label.setText("")
