@@ -32,7 +32,7 @@ class Colors:
     item = QColor(240, 240, 255, 120)
     circle_border = QColor(255, 255, 255, 0)
     circle = QColor(0, 0, 0, 255)
-    circle_hovered = QColor(80, 255, 255, 255)
+    circle_hovered = QColor(50, 100, 100, 255)
     circle_activated = QColor(255, 80, 80, 150)
     circle_toggled = QColor(80, 80, 255, 150)
     modifierBorder = QColor(168, 34, 3, 50)

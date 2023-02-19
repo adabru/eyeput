@@ -34,13 +34,13 @@ class GridLines(QWidget):
         dx = int(self.geometry.width() / Tiles.x)
         dy = int(self.geometry.height() / Tiles.y)
 
-        # horizontal lines
-        for i in range(3):
-            painter.drawRect(0, i * 2 * dy, self.geometry.width(), 2 * dy)
+        # # horizontal lines
+        # for i in range(3):
+        #     painter.drawRect(0, i * 2 * dy, self.geometry.width(), 2 * dy)
 
-        # vertical lines
-        for i in range(3):
-            painter.drawRect(i * 4 * dx, 0, 4 * dx, self.geometry.height())
+        # # vertical lines
+        # for i in range(3):
+        #     painter.drawRect(i * 4 * dx, 0, 4 * dx, self.geometry.height())
 
 
 class LabelGrid(QWidget):

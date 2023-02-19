@@ -10,6 +10,18 @@ from pynput.mouse import Button, Controller
 # https://github.com/boppreh/keyboard
 import keyboard
 
+# see https://github.com/boppreh/keyboard/issues/588
+keyboard._os_keyboard.register_key(
+    (12, ()), keyboard._os_keyboard.normalize_name("ssharp")
+)
+keyboard._os_keyboard.register_key(
+    (12, (keyboard._os_keyboard.normalize_name("shift"),)),
+    keyboard._os_keyboard.normalize_name("question"),
+)
+keyboard._os_keyboard.register_key(
+    (12, (keyboard._os_keyboard.normalize_name("altgr"),)),
+    keyboard._os_keyboard.normalize_name("backslash"),
+)
 
 mouse = Controller()
 
