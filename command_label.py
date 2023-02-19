@@ -1,7 +1,7 @@
 import os.path
 
 from PySide2.QtWidgets import QLabel
-from PySide2.QtGui import QFont, QColor, QPainter, QPixmap
+from PySide2.QtGui import QFont, QColor, QPainter, QPixmap, QPolygon
 from PySide2.QtCore import Qt, QPoint, QRect, QTimer
 
 from settings import *
@@ -70,7 +70,33 @@ class CommandLabel(QLabel):
         elif self.toggled:
             painter.setBrush(Colors.circle_toggled)
             painter.setPen(Colors.circle_toggled)
-            painter.drawRect(self.rect())
+            if isinstance(self.toggled, tuple) and not (
+                self.toggled[0] and self.toggled[1]
+            ):
+                w = self.rect().width()
+                h = self.rect().height()
+                if self.toggled[0]:
+                    painter.drawPolygon(
+                        QPolygon(
+                            [
+                                QPoint(0, 0),
+                                QPoint(w, 0),
+                                QPoint(0, h),
+                            ]
+                        )
+                    )
+                if self.toggled[1]:
+                    painter.drawPolygon(
+                        QPolygon(
+                            [
+                                QPoint(w, 0),
+                                QPoint(w, h),
+                                QPoint(0, h),
+                            ]
+                        )
+                    )
+            else:
+                painter.drawRect(self.rect())
 
         # draw image
         if self.pixmap:

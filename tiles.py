@@ -273,9 +273,12 @@ tile_groups = {
             "unpause_tag": (TagAction("unpause", None, "pause"), None),
             "follow_until_click_tag": (
                 TagAction("🖰", None, "follow_until_click"),
-                None,
+                TagAction("follow", None, "follow"),
             ),
-            "hide_labels": (TagAction("labels", None, "hide_labels"), None),
+            "hide_labels": (
+                TagAction("labels", None, "hide_labels"),
+                TagAction("👁", None, "debug_gaze"),
+            ),
             "disable_speech": (TagAction("🔇", None, "disable_speech"), None),
             "german": (TagAction("DE", None, "german"), None),
         },

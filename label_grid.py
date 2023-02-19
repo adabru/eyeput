@@ -156,7 +156,15 @@ class LabelGrid(QWidget):
                 elif label.id in self.state.modifiers:
                     label.setToggled(True)
                 elif type(actions[0]) is TagAction:
-                    label.setToggled(self.tags.has(actions[0].tag))
+                    if type(actions[1]) is TagAction:
+                        label.setToggled(
+                            (
+                                self.tags.has(actions[0].tag),
+                                self.tags.has(actions[1].tag),
+                            )
+                        )
+                    else:
+                        label.setToggled(self.tags.has(actions[0].tag))
 
         for label in self.labels.values():
             if label.id == None:
