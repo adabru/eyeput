@@ -164,12 +164,15 @@ class App(QObject):
     def on_calibration_end(self):
         self.tags.unset_tag("calibration")
 
-    @Slot()
-    def onHotkeyPressed(self):
-        self.activation.hotkeyTriggered()
-        self.grid_widget.on_gaze(
-            self.currPos.x(), self.currPos.y(), after_activation=True
-        )
+    @Slot(str)
+    def onHotkeyPressed(self, id):
+        if id == "toggle":
+            self.activation.hotkeyTriggered()
+            self.grid_widget.on_gaze(
+                self.currPos.x(), self.currPos.y(), after_activation=True
+            )
+        elif id == "calibrate":
+            self.tags.set_tag("calibration")
 
     @Slot(str)
     def activation_changed(self, label):

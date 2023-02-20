@@ -8,7 +8,7 @@ from settings import *
 
 
 class HotḱeyThread(QThread):
-    hotkey_signal = Signal()
+    hotkey_signal = Signal(str)
 
     def __init__(self):
         super().__init__()
@@ -28,4 +28,4 @@ class HotḱeyThread(QThread):
             with open(FIFO) as fifo:
                 data = fifo.read()
                 if len(data) > 0:
-                    self.hotkey_signal.emit()
+                    self.hotkey_signal.emit(data)

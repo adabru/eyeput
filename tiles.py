@@ -280,7 +280,10 @@ tile_groups = {
                 TagAction("👁", None, "debug_gaze"),
             ),
             "disable_speech": (TagAction("🔇", None, "disable_speech"), None),
-            "german": (TagAction("DE", None, "german"), None),
+            "german": (
+                TagAction("DE", None, "german"),
+                TagAction("DE", None, "german_words"),
+            ),
         },
         "width": 10,
         "height": 1,
