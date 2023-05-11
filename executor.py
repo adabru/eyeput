@@ -49,5 +49,9 @@ class Executor:
         elif id == "comma_newline":
             external.press_key(",")
             external.press_key("enter")
+        elif id == "git_diff":
+            external.type("git diff --ws-error-highlight=all\n")
+        elif id == "git_all":
+            external.type("git add -A\n")
         # if id == "left_click":
         #     external.left_click()

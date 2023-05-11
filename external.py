@@ -55,6 +55,13 @@ def press_key(keycode):
     keyboard.press_and_release(keycode)
 
 
+def type(text: str):
+    # activate keyboard
+    keyboard.press_and_release("shift")
+    time.sleep(0.02)
+    keyboard.write(text)
+
+
 def exec(command):
     subprocess.Popen(command, shell=True)
 

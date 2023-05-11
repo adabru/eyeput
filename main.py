@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import asyncio
 from threading import Thread
 from app import App
@@ -32,3 +34,4 @@ executor = Executor(bus, "executor")
 
 app = App(bus)
 app.run()
+# bus_thread.join()

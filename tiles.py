@@ -289,6 +289,15 @@ tile_groups = {
         "height": 1,
         "color": QColor(80, 255, 120, 50),
     },
+    "git": {
+        "tiles": {
+            "git_all": (TextAction("ga", None, "git_all"), None),
+            "git_diff": (TextAction("gd", None, "git_diff"), None),
+        },
+        "width": 10,
+        "height": 1,
+        "color": QColor(80, 255, 120, 50),
+    },
 }
 tiles = {
     "keyboard1": {
@@ -301,7 +310,10 @@ tiles = {
     },
     "keyboard2": {"function_keys": (0, 0)},
     "textCmds": {"context": (0, 0)},
-    "dictation": {"dictation": (0, 0)},
+    "dictation": {
+        "dictation": (0, 0),
+        "git": (1, 3),
+    },
     # "apps": {
     #     # row 0
     #     "vsc-eyeput": (ShellAction(None),
